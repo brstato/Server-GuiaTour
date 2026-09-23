@@ -28,7 +28,8 @@ var
    LModel: TLojaModel;
    id: string;
 begin
-   id := Req.Params['id'];
+   //id := Req.Params['id'];
+   id := TDataModule1.GetIdLoja(Req.Headers['Authorization']);
    LModel := TLojaModel.Create;
    try
      try
@@ -659,7 +660,7 @@ begin
   .Get('api/v1/account/get_slug/:slug', handlerGetSlug);
 
   THorse.AddCallback(HorseJWT(TConfig.Token))
-  .get('api/v1/account/get_data/:id', handlerGetDataAccount);
+  .get('api/v1/account/get_data', handlerGetDataAccount);
 
   THorse.AddCallback(HorseJWT(TConfig.Token))
   .get('api/v1/account/get_categorias', handlerGetCategorias);

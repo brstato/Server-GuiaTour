@@ -185,7 +185,8 @@ var
 begin
   jsonres := nil;
   try
-    id_loja := req.Params['id_loja'];
+    //id_loja := req.Params['id_loja'];
+    id_loja := TDataModule1.GetIdLoja(req.Headers['Authorization']);
 
     if Trim(id_loja) = '' then
     begin
@@ -790,7 +791,7 @@ begin
   .Post('api/v1/portfolio/update', HandlePortifolioUpdate);
 
   THorse.AddCallback(HorseJWT(TConfig.Token))
-  .Get('api/v1/portfolio/info/:id_loja', HandlerPortifolioGetInfo);
+  .Get('api/v1/portfolio/info', HandlerPortifolioGetInfo);
 
   THorse.AddCallback(HorseJWT(TConfig.Token))
   .Post('api/v1/portfolio/remove', HandleRemoveItem);
