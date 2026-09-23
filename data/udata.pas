@@ -31,7 +31,6 @@ type
   private
   public
     class function GetIdLoja(const auth: String): String;
-    const token: string = '99617610add82b83fdf8b5c8f42b1ddf6d4d866b7a95f330b403900ec946e554';
   end;
 
 var
@@ -80,8 +79,6 @@ procedure TDataModule1.DataModuleCreate(Sender: TObject);
 var
   database:string;
 begin
-  //token := '';
-
   //database:='base_dev';
   database:='base';
 
@@ -94,9 +91,6 @@ begin
     ZConnection1.Properties.Add('RawStringEncoding=DB_CP');
     ZConnection1.Properties.Add('Wait=True');
     ZConnection1.Connect;
-
-
-    //token := trim(tconfig.ConfigValue('token', 'token', ''));
   except
     on E: Exception do
       WriteLn('Erro ao conectar ao banco (' + database + '): ' + E.Message);

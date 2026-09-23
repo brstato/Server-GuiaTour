@@ -10,6 +10,7 @@ uses
 type
   TConfig = class
     public
+      class var Token: string;
       class function ConfigValue(const Section, Name, Default: string): string;
   end;
 
@@ -29,6 +30,7 @@ end;
 initialization
   try
     Ini := TIniFile.Create(ExpandFileName(ExtractFilePath(ParamStr(0)) + 'resources' + PathDelim + 'config.ini'));
+    TConfig.Token := TConfig.ConfigValue('token', 'token', '');
   except
     Ini := nil;
   end;

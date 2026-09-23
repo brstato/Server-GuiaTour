@@ -130,7 +130,7 @@ var
 begin
   try
     token := TLazJWT.New
-           .SecretJWT(DataModule1.token)
+           .SecretJWT(TConfig.Token)
            .Exp(DateTimeToUnix(IncHour(now, 1)))
            .AddClaim('id', uuid)
            .AddClaim('Exp', DateTimeToUnix(IncMonth(now, 1)))

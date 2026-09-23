@@ -16,7 +16,8 @@ uses
   fpjson,
   LazJWT,
   StrUtils,
-  usecurityservice;
+  usecurityservice,
+  uconfig;
 
 type
 
@@ -782,28 +783,28 @@ end;
 
 class procedure TPortifolioController.RegisterRoutes();
 begin
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
   .Post('api/v1/portfolio/update_portifolio_basico', HandlePortifolioUpdateBasico);
 
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
   .Post('api/v1/portfolio/update', HandlePortifolioUpdate);
 
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
   .Get('api/v1/portfolio/info/:id_loja', HandlerPortifolioGetInfo);
 
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
   .Post('api/v1/portfolio/remove', HandleRemoveItem);
 
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
   .Get('api/v1/portfolio/galeria/:id_portfolio', HandleGetGaleria);
 
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
   .Post('api/v1/portfolio/avatar', HandleUpdateAvatar);
 
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
   .Post('api/v1/portfolio/foto-bio', HandleUpdateFotoBio);
 
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
   .Post('api/v1/portfolio/foto-capa', HandleUpdateFotoCapa);
 
   THorse.Get('/loja/:slug', HandlerPortifolioGet);
@@ -812,15 +813,15 @@ begin
   THorse.Get('/robots.txt', HandlerRobotsGet);
   THorse.Get('/sitemap.xml', HandlerSitemapGet);
 
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
     .Post('api/v1/portfolio/upload', HandleUploadFoto);
 
   THorse.Post('api/v1/depoimentos', HandleDepoimentoCreate);
 
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
     .Get('api/v1/depoimentos/pendentes', HandleGetDepoimentosPendentes);
 
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
     .Put('api/v1/depoimentos/aprovar', HandleAprovarDepoimento);
 end;
 

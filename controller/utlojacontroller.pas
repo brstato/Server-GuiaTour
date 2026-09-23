@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Horse, ulojamodel, uJsonView, fpjson,
-  sql_queries, udata, ucacheservice, Horse.JWT, usecurityservice;
+  sql_queries, udata, ucacheservice, Horse.JWT, usecurityservice, uconfig;
 
 type
 
@@ -640,31 +640,31 @@ end;
 
 class procedure TlojaController.RegisterRoutes;
 begin
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
   .Get('api/v1/portfolio/account/:cep', HandlerGetEnderecoCep);
 
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
   .Post('api/v1/account/update_configuracoes_avancadas', HandlerUpdateConfiguracoesAvancadas);
 
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
   .Post('api/v1/account/update_endereco',   HandlerUpdateEndereco);
 
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
   .Post('api/v1/account/update_account_basico',   HandlerUpdateAccounBasico);
 
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
   .Post('api/v1/account/contato',   HandlerUpdateAccounContato);
 
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
   .Get('api/v1/account/get_slug/:slug', handlerGetSlug);
 
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
   .get('api/v1/account/get_data/:id', handlerGetDataAccount);
 
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
   .get('api/v1/account/get_categorias', handlerGetCategorias);
 
-  THorse.AddCallback(HorseJWT(DataModule1.token))
+  THorse.AddCallback(HorseJWT(TConfig.Token))
      .Post('api/v1/account/update',   HandlerUpdateAccounPass);
 
      THorse.Post('api/v1/account/register', HandleRegisterRoute);
@@ -673,22 +673,22 @@ begin
 
      thorse.post('api/v1/public/endereco', HandleEndereco);
 
-     THorse.AddCallback(HorseJWT(DataModule1.token))
+     THorse.AddCallback(HorseJWT(TConfig.Token))
      .Post('api/v1/account/sincronizar-cache/:instance', HandleSincronizarCache);
 
-     THorse.AddCallback(HorseJWT(DataModule1.token))
+     THorse.AddCallback(HorseJWT(TConfig.Token))
      .Post('api/v1/account/metatoken',   HandlerUpdateMetaLongToken);
 
-     THorse.AddCallback(HorseJWT(DataModule1.token))
+     THorse.AddCallback(HorseJWT(TConfig.Token))
      .Post('api/v1/account/meta_ads_id',   HandlerUpdateMetaAdsId);
 
-     THorse.AddCallback(HorseJWT(DataModule1.token))
+     THorse.AddCallback(HorseJWT(TConfig.Token))
      .Post('api/v1/account/meta_pixel_id',   HandlerUpdateMetaPixelId);
 
-     THorse.AddCallback(HorseJWT(DataModule1.token))
+     THorse.AddCallback(HorseJWT(TConfig.Token))
      .Post('api/v1/account/google_analytics_id',   HandlerUpdateGoogleAnalyticsId);
 
-     THorse.AddCallback(HorseJWT(DataModule1.token))
+     THorse.AddCallback(HorseJWT(TConfig.Token))
      .Post('api/v1/account/status_campanha_meta',   HandlerUpdateStatusCampanhaMeta);
 end;
 
