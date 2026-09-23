@@ -12,7 +12,8 @@ uses
   { you can add units after this }
   udata, uconfig, usecurityservice, uNetService, ugetdata, uJsonView,
   uguiatourview, CustApp, urouter, uTlogincontroller, utlojacontroller,
-  uportifoliocontroller, uloginmodel, ulojamodel, uportifoliomodel, Horse
+  uportifoliocontroller, uloginmodel, ulojamodel, uportifoliomodel,
+  uvendedormodel, Horse
   ;
 
 type
@@ -82,9 +83,9 @@ begin
      CarregarIndexMemoria;
      WriteLn('Index carregado');
      WriteLn('--------------------');
-     THorse.Listen(8100);
-     WriteLn('Servidor escutando na porta ');// + IntToStr(THorse.Port));
+     WriteLn('Servidor escutando na porta: 8100');
      WriteLn('--------------------');
+     THorse.Listen(8100);
   except on e:exception do
      WriteLn('Erro ao iniciar: ' + e.Message);
   end;

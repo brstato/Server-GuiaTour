@@ -31,6 +31,8 @@ type
   private
   public
     class function GetIdLoja(const auth: String): String;
+    class function GetClaim(const auth, claimName: String): String;
+    class function GetTipoUsuario(const auth: String): String;
   end;
 
 var
@@ -43,27 +45,38 @@ implementation
 
 { TDataModule1 }
 
-class function TDataModule1.GetIdLoja(const auth: String): String;
+class function TDataModule1.GetClaim(const auth, claimName: String): String;
 var
   tokenSTR: string;
   Laz: ILazJWT;
   PayloadData: TJSONData;
 begin
   Result := '';
-  tokenSTR:= StringReplace(auth, 'Bearer ', '', [rfReplaceAll, rfIgnoreCase]);
+  tokenSTR := StringReplace(auth, 'Bearer ', '', [rfReplaceAll, rfIgnoreCase]);
 
   if tokenSTR <> '' then
   begin
     try
-      laz := TLazJWT.New.UseCustomPayLoad(True).Token(tokenSTR);
+      Laz := TLazJWT.New.UseCustomPayLoad(True).Token(tokenSTR);
       PayloadData := Laz.CustomPayLoad;
 
       if Assigned(PayloadData) and (PayloadData.JSONType = jtObject) then
-        Result := TJSONObject(PayloadData).Get('id', '');
+        Result := TJSONObject(PayloadData).Get(claimName, '');
     except
       Result := '';
     end;
   end;
+end;
+
+class function TDataModule1.GetIdLoja(const auth: String): String;
+begin
+  Result := GetClaim(auth, 'id');
+end;
+
+class function TDataModule1.GetTipoUsuario(const auth: String): String;
+begin
+  Result := GetClaim(auth, 'tipo');
+  if Result = '' then Result := 'loja'; // tokens antigos, emitidos antes desta mudança, continuam valendo como loja
 end;
 
 
