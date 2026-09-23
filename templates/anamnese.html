@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Ficha de Anamnese</title>
+    <style>
+        /* RESET E BASE */
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact; /* Garante impressão de cores de fundo */
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            line-height: 1.4;
+            color: #333;
+            background-color: #fff;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* ESTRUTURA */
+        .container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            border: 1px solid #e0e0e0;
+            padding: 40px;
+            background: #fff;
+        }
+
+        /* CABEÇALHO */
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            font-size: 24px;
+            color: #000;
+        }
+
+        .header p {
+            margin: 5px 0 0;
+            color: #666;
+            font-size: 12px;
+        }
+
+        /* SEÇÕES */
+        .section-title {
+            background-color: #f4f4f4;
+            padding: 8px 15px;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            border-left: 4px solid #000;
+        }
+
+        /* GRIDS DE DADOS */
+        /* Usando Flexbox simples compatível com wkhtmltopdf */
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .col {
+            flex: 1;
+            padding-right: 15px;
+            min-width: 200px; /* Evita quebra feia */
+        }
+
+        .col.full {
+            flex: 100%;
+        }
+
+        .field-label {
+            display: block;
+            font-size: 10px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        .field-value {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #000;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 4px;
+            min-height: 20px;
+        }
+
+        /* CHECKLIST DE SAÚDE */
+        .health-grid {
+            display: table; /* Table é mais seguro para grades densas em PDF */
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .health-row {
+            display: table-row;
+        }
+
+        .health-item {
+            display: table-cell;
+            width: 50%;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .health-question {
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .health-answer {
+            float: right;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .answer-yes { color: #d32f2f; } /* Vermelho para sim (alerta) */
+        .answer-no { color: #388e3c; } /* Verde para não */
+
+        /* TERMOS */
+        .terms {
+            font-size: 11px;
+            color: #555;
+            text-align: justify;
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #fafafa;
+            border: 1px dashed #ccc;
+        }
+
+        /* ASSINATURA */
+        .signature-section {
+            margin-top: 50px;
+            text-align: center;
+            page-break-inside: avoid; /* Evita quebrar a assinatura em duas páginas */
+        }
+
+        .signature-img {
+            max-width: 300px;
+            height: auto;
+            border-bottom: 1px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 5px;
+        }
+
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 10px;
+            color: #999;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>{{NOME_ESTUDIO}}</h1>
+        <h2>Anamnese</h2>
+        <p>Ficha de Procedimento e Controle de Segurança</p>
+    </div>
+
+    <div class="section-title">Dados do Cliente</div>
+    
+    <div class="row">
+        <div class="col">
+            <span class="field-label">Nome Completo</span>
+            <span class="field-value">{{NOME}}</span>
+        </div>
+        <div class="col">
+            <span class="field-label">Data de Nascimento</span>
+            <span class="field-value">{{DATA_NASCIMENTO}}</span>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col">
+            <span class="field-label">Telefone / WhatsApp</span>
+            <span class="field-value">{{TELEFONE}}</span>
+        </div>
+        <div class="col">
+            <span class="field-label">Instagram</span>
+            <span class="field-value">{{INSTA}}</span>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col full">
+            <span class="field-label">Profissão</span>
+            <span class="field-value">{{PROFISSAO}}</span>
+        </div>
+    </div>
+
+    <div class="section-title">Perfil</div>
+    
+    <div class="row">
+        <div class="col">
+            <span class="field-label">Como nos conheceu?</span>
+            <span class="field-value">{{COMO_CONHECEU}}</span>
+        </div>          
+    </div>
+    
+    <div class="row">
+        <div class="col">
+            <span class="field-label">Gosta de Piercing?</span>
+            <span class="field-value">{{GOSTO_PIERCING}}</span>
+        </div>
+        <div class="col">
+            <span class="field-label">Gosta de Tattoo?</span>
+            <span class="field-value">{{GOSTO_TATUAGEM}}</span>
+        </div>
+        <div class="col">
+            <span class="field-label">Estilo Preferido</span>
+            <span class="field-value">{{ESTILO_TATUAGEM}}</span>
+        </div>      
+    </div>
+
+    <div class="section-title">Questionário de Saúde</div>
+
+          
+
+    
+    <div class="health-grid">
+        <div class="health-row">
+            <div class="health-item">
+                <span class="health-question">Alcool ou drogas nas ultimas 24h?</span>
+                <div style="font-size: 12px; color: #666; margin-top: 2px;">{{DROGAS}}</div>
+                 <!-- <div style="font-size: 12px; color: #666; margin-top: 2px;">SIM</div> -->
+            </div>
+           <div class="health-item">
+                <span class="health-question">Pratica esporte?</span>
+                <div style="font-size: 12px; color: #666; margin-top: 2px;">{{QUAL_ESPORTE}}</div>
+                 <!-- <div style="font-size: 12px; color: #666; margin-top: 2px;">TAEKWONDO</div> -->
+            </div>            
+        </div>
+
+        <div class="health-row">
+            <!-- <div class="health-item" style="width: 100%; display: block;"> -->
+                <div class="health-item">
+                <span class="health-question">Problemas de Pele?</span>
+                 <span class="health-answer">{{PROBLEMA_PELE}}</span>
+                  <!-- <span class="health-answer">SIM</span> -->
+                <div style="font-size: 12px; color: #666; margin-top: 2px;">{{QUAL_PROBLEMA_PELE}}</div>
+                 <!-- <div style="font-size: 12px; color: #666; margin-top: 2px;">ACNE DERMOICA</div> -->
+            </div>
+            <!-- <div class="health-item" style="width: 100%; display: block;"> -->
+                <div class="health-item">
+                <span class="health-question">Doenças Transmissíveis?</span>
+                <span class="health-answer">{{DOENCA_TRANSMISSIVEL}}</span>
+                <!-- <span class="health-answer">SIM</span> -->
+                <div style="font-size: 12px; color: #666; margin-top: 2px;">{{QUAL_DOENCA}}</div>
+                 <!-- <div style="font-size: 12px; color: #666; margin-top: 2px;">TODAS</div> -->
+            </div>  
+        </div>    
+  
+        <div class="health-row">         
+            <!-- <div class="health-item" style="width: 100%; display: block;"> -->
+                <div class="health-item">
+                <span class="health-question">Uso de Medicamentos?</span>
+                <span class="health-answer">{{MEDICAMENTO}}</span>
+                 <!-- <span class="health-answer">SIM</span> -->
+                <div style="font-size: 12px; color: #666; margin-top: 2px;">{{QUAL_MEDICAMENTO}}</div>
+                 <!-- <div style="font-size: 12px; color: #666; margin-top: 2px;">TODOS</div> -->
+            </div>
+            <div class="health-item">
+                <span class="health-question">Alergias?</span>
+                <span class="health-answer">{{ALERGIA}}</span>
+                 <!-- <span class="health-answer">SIM</span> -->
+                <div style="font-size: 12px; color: #666; margin-top: 2px;">{{QUAL_ALERGIA}}</div>
+                <!-- <div style="font-size: 12px; color: #666; margin-top: 2px;">TODOS</div> -->
+            </div>            
+        </div> 
+
+        <div class="health-row">
+            <div class="health-item">
+                <span class="health-question">Diabético?</span>
+                <span class="health-answer {{CLASS_DIABETICO}}">{{DIABETICO}}</span>
+            </div>
+            <div class="health-item">
+                <span class="health-question">Hipertenso?</span>
+                <span class="health-answer {{CLASS_HIPERTENSO}}">{{HIPERTENSO}}</span>
+            </div>
+        </div>
+        <div class="health-row">
+            <div class="health-item">
+                <span class="health-question">Hemofílico?</span>
+                <span class="health-answer {{CLASS_HEMOFILICO}}">{{HEMOFILICO}}</span>
+            </div>
+            <div class="health-item">
+                <span class="health-question">Gestante/Amamentando?</span>
+                <span class="health-answer {{CLASS_GESTANTE}}">{{GESTANTE_AMAMENTANDO}}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="terms">
+        <strong>Termo de Responsabilidade:</strong>
+        <p>
+            Declaro que as informações acima são verdadeiras e assumo a responsabilidade de seguir as orientações de cuidados pós-procedimento (cicatrização). estou ciente de que a tatuagem é um processo definitivo e que depende da visão artistica do profissional.
+            <br><br>
+            <strong>Aceite dos Termos:</strong> {{CONCORDA_TERMOS}}
+        </p>
+    </div>
+
+    <div class="signature-section">
+        {{ASSINATURA_IMG_TAG}}
+        <div style="font-size: 12px; font-weight: bold;">{{NOME}}</div>
+        <div style="font-size: 10px; color: #888;">Assinatura Digital do Cliente</div>
+    </div>
+
+    <div class="footer">
+        Gerado automaticamente em {{DATA_GERACAO}}
+    </div>
+</div>
+
+</body>
+</html>

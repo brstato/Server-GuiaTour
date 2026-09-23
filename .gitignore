@@ -1,0 +1,15 @@
+client_secret_439320223007-00pfpec5d2ba7nr8vcqupq8rmjd1ia5r.apps.googleusercontent.com.json
+resources/config.ini
+guiatourapi
+
+# Pascal/Lazarus
+lib/
+backup/
+*.compiled
+*.o
+*.ppu
+*.or
+*.rsj
+*.lps
+*.bak
+uploads/

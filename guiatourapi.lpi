@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectOptions>
+    <Version Value="12"/>
+    <General>
+      <Flags>
+        <MainUnitHasCreateFormStatements Value="False"/>
+        <MainUnitHasTitleStatement Value="False"/>
+        <MainUnitHasScaledStatement Value="False"/>
+      </Flags>
+      <SessionStorage Value="InProjectDir"/>
+      <Title Value="Guia Tour"/>
+      <UseAppBundle Value="False"/>
+      <ResourceType Value="res"/>
+    </General>
+    <BuildModes>
+      <Item Name="Default" Default="True"/>
+    </BuildModes>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+    <RunParams>
+      <FormatVersion Value="2"/>
+    </RunParams>
+    <RequiredPackages>
+      <Item>
+        <PackageName Value="lr_zeosdb"/>
+      </Item>
+    </RequiredPackages>
+    <Units>
+      <Unit>
+        <Filename Value="guiatourapi.lpr"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="router/urouter.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="data/udata.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="DataModule1"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="DataModule"/>
+      </Unit>
+      <Unit>
+        <Filename Value="resources/uconfig.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="service/usecurityservice.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="view/ujsonview.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uJsonView"/>
+      </Unit>
+      <Unit>
+        <Filename Value="controller/utlogincontroller.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uTlogincontroller"/>
+      </Unit>
+      <Unit>
+        <Filename Value="model/uloginmodel.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="model/ulojamodel.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="controller/utlojacontroller.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="controller/uportifoliocontroller.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="model/uportifoliomodel.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="view/uportifolioview.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="service/ugetdata.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+    </Units>
+  </ProjectOptions>
+  <CompilerOptions>
+    <Version Value="11"/>
+    <Target>
+      <Filename Value="guiatourapi"/>
+    </Target>
+    <SearchPaths>
+      <IncludeFiles Value="$(ProjOutDir)"/>
+      <OtherUnitFiles Value="router;data;resources;../horse/bcrypt;../horse/bcrypt/src;../horse/HashLib4Pascal;../horse/HashLib4Pascal/HashLib;../horse/HashLib4Pascal/HashLib/src;../horse/HashLib4Pascal/HashLib/src/Base;../horse/HashLib4Pascal/HashLib/src/Checksum;../horse/HashLib4Pascal/HashLib/src/Crypto;../horse/HashLib4Pascal/HashLib/src/Crypto/Blake2BParams;../horse/HashLib4Pascal/HashLib/src/Crypto/Blake2SParams;../horse/HashLib4Pascal/HashLib/src/Hash32;../horse/HashLib4Pascal/HashLib/src/Hash64;../horse/HashLib4Pascal/HashLib/src/Hash128;../horse/HashLib4Pascal/HashLib/src/Include;../horse/HashLib4Pascal/HashLib/src/Interfaces;../horse/HashLib4Pascal/HashLib/src/Interfaces/IBlake2BParams;../horse/HashLib4Pascal/HashLib/src/Interfaces/IBlake2SParams;../horse/HashLib4Pascal/HashLib/src/KDF;../horse/HashLib4Pascal/HashLib/src/Nullable;../horse/HashLib4Pascal/HashLib/src/NullDigest;../horse/HashLib4Pascal/HashLib/src/Packages;../horse/HashLib4Pascal/HashLib/src/Packages/FPC;../horse/HashLib4Pascal/HashLib/src/Utils;../horse/horse-3.1.6;../horse/horse-3.1.6/src;../horse/horse-compression;../horse/horse-compression/src;../horse/horse-jwt-2.0.17;../horse/horse-jwt-2.0.17/src;../horse/LazJWT-1.2.0;../horse/LazJWT-1.2.0/src;service;../RESTRequest4Delphi/RESTRequest4Delphi-4.0.23;../RESTRequest4Delphi/RESTRequest4Delphi-4.0.23/src;view;controller;model"/>
+      <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+    </SearchPaths>
+    <Linking>
+      <Debugging>
+        <DebugInfoType Value="dsDwarf3"/>
+      </Debugging>
+    </Linking>
+  </CompilerOptions>
+  <Debugging>
+    <Exceptions>
+      <Item>
+        <Name Value="EAbort"/>
+      </Item>
+      <Item>
+        <Name Value="ECodetoolError"/>
+      </Item>
+      <Item>
+        <Name Value="EFOpenError"/>
+      </Item>
+      <Item>
+        <Name Value="EWriteError"/>
+      </Item>
+      <Item>
+        <Name Value="EHTTPClient"/>
+      </Item>
+    </Exceptions>
+  </Debugging>
+</CONFIG>

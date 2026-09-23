@@ -1,0 +1,53 @@
+object DataModule1: TDataModule1
+  OnCreate = DataModuleCreate
+  OnDestroy = DataModuleDestroy
+  OldCreateOrder = False
+  Height = 496
+  HorizontalOffset = 322
+  VerticalOffset = 184
+  Width = 506
+  object ZConnection1: TZConnection
+    ControlsCodePage = cCP_UTF8
+    Properties.Strings = (
+      'RawStringEncoding=DB_CP'
+    )
+    AutoCommit = False
+    Connected = True
+    DisableSavepoints = False
+    HostName = '100.72.176.93'
+    Port = 3050
+    Database = 'guiatour'
+    User = 'sysdba'
+    Password = 'masterkey'
+    Protocol = 'pooled.firebird'
+    LibraryLocation = '/usr/lib/x86_64-linux-gnu/libfbclient.so'
+    Left = 110
+    Top = 96
+  end
+  object ZConnectionGroup1: TZConnectionGroup
+    Protocol = 'pooled.firebird'
+    Port = 3050
+    LibraryLocation = '/usr/lib/x86_64-linux-gnu/libfbclient.so'
+    Left = 110
+    Top = 200
+    str1 = (
+      'GP'
+    )
+    str2 = (
+      'WWUZ'
+    )
+  end
+  object ZGroupedConnection1: TZGroupedConnection
+    ControlsCodePage = cCP_UTF8
+    Properties.Strings = (
+      'ConnectionTimeout=60'
+      'MaxConnections=0'
+      'RawStringEncoding=DB_CP'
+      'Wait=False'
+    )
+    DisableSavepoints = False
+    ConnectionGroup = ZConnectionGroup1
+    Left = 304
+    Top = 200
+  end
+end
