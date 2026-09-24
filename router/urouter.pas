@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Horse, uTlogincontroller, utlojacontroller,
-  uportifoliocontroller, fpjson;
+  uportifoliocontroller, utvendedorcontroller, fpjson;
 type
 
   { tAppRouter }
@@ -35,6 +35,7 @@ begin
     TLoginController.RegisterRoutes;
     TlojaController.RegisterRoutes;
     TPortifolioController.RegisterRoutes;
+    TVendedorController.RegisterRoutes;
 end;
 
 

@@ -294,7 +294,7 @@ class function TLoginModel.LoginGoogleVendedor(const g_code: string;
 var
    dataset: TDataSet;
    jsonObject, JsonTokenReq, GoogleTokenRes, GoogleUserRes: TJSONObject;
-   AccessToken, g_mail: string;
+   AccessToken, g_mail, g_name: string;
    TokenResponse, UserInfoResponse: IResponse;
    idVendedor, refreshToken: string;
    token: string;

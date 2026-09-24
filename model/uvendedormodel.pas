@@ -21,21 +21,22 @@ class function TVendedorModel.DonoDaLoja(idVendedor, uuidLoja: string): Boolean;
 var
   dataset: TDataSet;
 begin
+    dataset := nil;
     try
-        try
-            Result := False;
-            if (idVendedor = '') or (uuidLoja = '') then Exit;
+      try
+        Result := False;
+        if (idVendedor = '') or (uuidLoja = '') then Exit;
 
-            dataset := TGetData.getData(
-                'SELECT 1 FROM loja l JOIN vendedor v ON v.id = l.id_vendedor ' +
-                'WHERE l.uuid = :uuidLoja AND v.uuid = :idVendedor',
-                [uuidLoja, idVendedor], 
-                True
-            );
-            Result := not dataset.IsEmpty;
-        except
-            raise;
-        end;
+        dataset := TGetData.getData(
+            'SELECT 1 FROM loja l JOIN vendedor v ON v.id = l.id_vendedor ' +
+            'WHERE l.uuid = :uuidLoja AND v.uuid = :idVendedor',
+            [uuidLoja, idVendedor],
+            True
+        );
+        Result := not dataset.IsEmpty;
+      except
+        raise;
+      end;
     finally
         dataset.Free;
     end;
@@ -44,6 +45,7 @@ end;
 class function TVendedorModel.ListarComercios(idVendedor: string): TJSONArray;
 var
   dataset: TDataSet;
+  item: TJSONObject;
 begin
     try
         try
@@ -58,13 +60,11 @@ begin
             );
             while not dataset.EOF do
             begin
-                with TJSONObject.Create do
-                begin
-                    Add('uuid', dataset.FieldByName('uuid').AsString);
-                    Add('nome', dataset.FieldByName('nome').AsString);
-                    Add('slug', dataset.FieldByName('slug').AsString);
-                    Result.Add(TJSONObject(Result.Clone)); // ajuste: Result.Add(json criado acima)
-                end;
+                item := TJSONObject.Create;
+                item.Add('uuid', dataset.FieldByName('uuid').AsString);
+                item.Add('nome', dataset.FieldByName('nome').AsString);
+                item.Add('slug', dataset.FieldByName('slug').AsString);
+                Result.Add(item);
                 dataset.Next;
             end;        
         except
