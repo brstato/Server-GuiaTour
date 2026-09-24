@@ -219,17 +219,17 @@ begin
 end;
 
 
-class function TLoginModel.LoginGoogle(const g_code: string; out status_code:
-        integer; r_token: string = ''): UTF8String;
+class function TLoginModel.LoginGoogle(const g_code: string; out status_code: integer;
+        r_token: string = ''): UTF8String;
 var
    dataset: TDataSet;
-   jsonObject, JsonData, JsonTokenReq, GoogleTokenRes, GoogleUserRes: TJSONObject;
-   LoginDados: TLoginDados;
-   AccessToken, g_mail, g_name: string;
-   TokenResponse, UserInfoResponse: IResponse;
+   jsonObject, JsonData: TJSONObject;
+   g_mail, g_name, idResult, refreshToken, token, tipo: string;
+   expire: integer;
 begin
-     LoginDados.bloqueado := false;
      jsonObject := TJSONObject.Create;
+     dataset := nil;
+     status_code := 401;
      try
        if not TrocarCodeEEmailGoogle(g_code, g_mail, g_name, status_code) then
        begin
@@ -237,57 +237,67 @@ begin
          Exit(jsonObject.AsJSON);
        end;
 
-       // ETAPA 3 em diante: igual ao que já existia (busca/cria loja pelo e-mail...)
-       JsonData := TJSONObject.Create;
-       try
+       // 1) Verifica primeiro se é um vendedor cadastrado (nunca auto-cria aqui)
+       dataset := TGetData.getData(
+         'SELECT uuid FROM vendedor WHERE email = :email AND ativo = TRUE',
+         [g_mail], True
+       );
+
+       if not dataset.IsEmpty then
+       begin
+         tipo := 'vendedor';
+         idResult := dataset.FieldByName('uuid').AsString;
+       end
+       else
+       begin
+         // 2) Senão, segue o fluxo de loja de sempre (busca ou auto-cria)
+         dataset.Free;
          dataset := TGetData.getData('SELECT uuid, validade FROM loja WHERE email = :email', [g_mail], True);
+         tipo := 'loja';
 
          if dataset.IsEmpty then
-         begin
-           LoginDados.Id := TLojaModel.createloja(g_name, g_mail);
-           jsonObject.Add('status', '200');
-         end
+           idResult := TLojaModel.createloja(g_name, g_mail)
          else
          begin
-           LoginDados.Id := dataset.FieldByName('uuid').AsString;
+           idResult := dataset.FieldByName('uuid').AsString;
            if DateOf(dataset.FieldByName('validade').AsDateTime) < DateOf(Now) then
            begin
-             jsonObject.Add('status', '403');
              status_code := 403;
-             LoginDados.Bloqueado := true;
-           end
-           else
-             jsonObject.Add('status', '200');
+             jsonObject.Add('status', '403');
+             Exit(jsonObject.AsJSON);
+           end;
          end;
-
-         if not LoginDados.Bloqueado then
-         begin
-           JsonData.Add('id', LoginDados.Id);
-
-           LoginDados.RefreshToken := createRefreshToken;
-           LoginDados.Expire := DateTimeToUnix(IncMonth(Now, 1));
-
-           TGetData.getData(
-             'update loja set refresh_token = :token, expire = :expire, '+
-             'google_refresh_token = :r_token where uuid = :uuid;',
-             [LoginDados.RefreshToken, LoginDados.Expire, r_token, LoginDados.Id]
-           );
-
-           LoginDados.Token := updateJWT(LoginDados.Id);
-
-           jsonObject.Add('token',    LoginDados.Token);
-           jsonObject.Add('r_token',  LoginDados.RefreshToken);
-           jsonObject.Add('message',  JsonData);
-           jsonObject.Add('id_loja',  LoginDados.Id);
-
-           status_code := 200;
-         end;
-       finally
-         dataset.Free;
        end;
 
+       refreshToken := createRefreshToken;
+       expire := DateTimeToUnix(IncMonth(Now, 1));
+
+       if tipo = 'loja' then
+         TGetData.getData(
+           'update loja set refresh_token = :token, expire = :expire, ' +
+           'google_refresh_token = :r_token where uuid = :uuid;',
+           [refreshToken, expire, r_token, idResult], False)
+       else
+         TGetData.getData(
+           'update vendedor set refresh_token = :token, expire = :expire where uuid = :uuid;',
+           [refreshToken, expire, idResult], False);
+
+       token := updateJWT(idResult, tipo);
+
+       JsonData := TJSONObject.Create;
+       JsonData.Add('id', idResult);
+
+       jsonObject.Add('status', '200');
+       jsonObject.Add('token', token);
+       jsonObject.Add('r_token', refreshToken);
+       jsonObject.Add('message', JsonData);
+       jsonObject.Add('id_loja', idResult); // mantido por compatibilidade com o front atual
+       jsonObject.Add('tipo', tipo);        // NOVO — front usa isso pra decidir a tela
+
+       status_code := 200;
        Result := jsonObject.AsJSON;
      finally
+       if Assigned(dataset) then dataset.Free;
        jsonObject.Free;
      end;
 end;
