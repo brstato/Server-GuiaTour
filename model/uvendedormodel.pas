@@ -47,32 +47,33 @@ var
   dataset: TDataSet;
   item: TJSONObject;
 begin
+  dataset := nil;
+  try
     try
-        try
-            Result := TJSONArray.Create;
+      Result := TJSONArray.Create;
 
-            dataset := TGetData.getData(
-                'SELECT l.uuid, l.nome, l.slug, l.validade FROM loja l ' +
-                'JOIN vendedor v ON v.id = l.id_vendedor ' +
-                'WHERE v.uuid = :idVendedor ORDER BY l.nome',
-                [idVendedor], 
-                True
-            );
-            while not dataset.EOF do
-            begin
-                item := TJSONObject.Create;
-                item.Add('uuid', dataset.FieldByName('uuid').AsString);
-                item.Add('nome', dataset.FieldByName('nome').AsString);
-                item.Add('slug', dataset.FieldByName('slug').AsString);
-                Result.Add(item);
-                dataset.Next;
-            end;        
-        except
-            raise;
-        end;
-    finally
-        dataset.Free;  
+      dataset := TGetData.getData(
+        'SELECT l.uuid, l.nome, l.slug, l.validade FROM loja l ' +
+        'JOIN vendedor v ON v.id = l.id_vendedor ' +
+        'WHERE v.uuid = :idVendedor ORDER BY l.nome',
+        [idVendedor],
+        True
+      );
+      while not dataset.EOF do
+      begin
+        item := TJSONObject.Create;
+        item.Add('uuid', dataset.FieldByName('uuid').AsString);
+        item.Add('nome', dataset.FieldByName('nome').AsString);
+        item.Add('slug', dataset.FieldByName('slug').AsString);
+        Result.Add(item);
+        dataset.Next;
+      end;
+    except
+      raise;
     end;
+  finally
+      dataset.Free;
+  end;
 end;
 
 class function TVendedorModel.CriarComercio(idVendedor, nome, telefone,
@@ -82,38 +83,39 @@ var
   uuid: TGuid;
   uuidString: string;
 begin
+  dataset := nil;
+  try
     try
-      try
-        CreateGUID(uuid);
-        uuidString := StringReplace(StringReplace(GUIDToString(uuid),
-                        '{', '', [rfReplaceAll]), '}', '', [rfReplaceAll]);
+      CreateGUID(uuid);
+      uuidString := StringReplace(StringReplace(GUIDToString(uuid),
+                      '{', '', [rfReplaceAll]), '}', '', [rfReplaceAll]);
 
-        dataset := TGetData.getData(
-            'insert into loja(nome, telefone, email, slug, uuid, id_categoria, ' +
-            'validade, id_vendedor) ' +
-            'values(:nome, :telefone, :email, :slug, :uuid, :idCategoria, ' +
-            ':validade, (select id from vendedor where uuid = :idVendedor)) ' +
-            'returning uuid;',
-            [
-                nome, 
-                telefone, 
-                email, 
-                slug, 
-                uuidString, 
-                idCategoria,
-                StrToDate(FormatDateTime('dd/mm/yyyy', IncMonth(Now, 1))), idVendedor
-            ],
-            True
-        );
+      dataset := TGetData.getData(
+          'insert into loja(nome, telefone, email, slug, uuid, id_categoria, ' +
+          'validade, id_vendedor) ' +
+          'values(:nome, :telefone, :email, :slug, :uuid, :idCategoria, ' +
+          ':validade, (select id from vendedor where uuid = :idVendedor)) ' +
+          'returning uuid;',
+          [
+              nome,
+              telefone,
+              email,
+              slug,
+              uuidString,
+              idCategoria,
+              StrToDate(FormatDateTime('dd/mm/yyyy', IncMonth(Now, 1))), idVendedor
+          ],
+          True
+      );
 
-        Result := dataset.FieldByName('uuid').AsString;
-        RegistrarLog(idVendedor, Result, 'criou_loja');        
-      except
-        raise;
-      end;
-    finally
-        dataset.Free;  
+      Result := dataset.FieldByName('uuid').AsString;
+      RegistrarLog(idVendedor, Result, 'criou_loja');
+    except
+      raise;
     end;
+  finally
+      dataset.Free;
+  end;
 end;
 
 class procedure TVendedorModel.RegistrarLog(idVendedor, uuidLoja, acao: string);

@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Horse, uloginmodel, uvendedormodel, uJsonView, fpjson,
-  udata, uconfig, Horse.JWT;
+  udata, uconfig, usecurityservice, Horse.JWT;
 
 type
 
@@ -155,10 +155,10 @@ begin
       idVendedor := TDataModule1.GetIdLoja(Req.Headers['Authorization']);
       RequestJson := TJSONObject(GetJSON(Req.Body));
 
-      nome        := Trim(RequestJson.Get('nome', ''));
-      telefone    := Trim(RequestJson.Get('telefone', ''));
-      email       := Trim(RequestJson.Get('email', ''));
-      slug        := Trim(RequestJson.Get('slug', ''));
+      nome        := TSecurityService.SanitizeInput(Trim(RequestJson.Get('nome', '')));
+      telefone    := TSecurityService.SanitizeInput(Trim(RequestJson.Get('telefone', '')));
+      email       := TSecurityService.SanitizeInput(Trim(RequestJson.Get('email', '')));
+      slug        := TSecurityService.SanitizeInput(Trim(RequestJson.Get('slug', '')));
       idCategoria := RequestJson.Get('id_categoria', 0);
 
       if (nome = '') or (email = '') then
