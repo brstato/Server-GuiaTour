@@ -159,7 +159,13 @@ begin
       telefone    := TSecurityService.SanitizeInput(Trim(RequestJson.Get('telefone', '')));
       email       := TSecurityService.SanitizeInput(Trim(RequestJson.Get('email', '')));
       slug        := TSecurityService.SanitizeInput(Trim(RequestJson.Get('slug', '')));
-      idCategoria := RequestJson.Get('id_categoria', 11);
+      idCategoria := RequestJson.Get('id_categoria', 0);
+
+      if idCategoria <= 0 then
+      begin
+        TJsonView.SendError(Res, 400, 'Categoria é obrigatória.');
+        Exit;
+      end;
 
       if (nome = '') or (email = '') then
       begin
