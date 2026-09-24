@@ -159,7 +159,7 @@ begin
       telefone    := TSecurityService.SanitizeInput(Trim(RequestJson.Get('telefone', '')));
       email       := TSecurityService.SanitizeInput(Trim(RequestJson.Get('email', '')));
       slug        := TSecurityService.SanitizeInput(Trim(RequestJson.Get('slug', '')));
-      idCategoria := RequestJson.Get('id_categoria', 0);
+      idCategoria := RequestJson.Get('id_categoria', 11);
 
       if (nome = '') or (email = '') then
       begin
