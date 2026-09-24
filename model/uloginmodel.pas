@@ -142,58 +142,61 @@ end;
 class function TLoginModel.updateRefreshToken(r_token, id: string): UTF8String;
 var
    queryData: TDataSet;
-   refreshToken, token: string;
+   refreshToken, token, tipo: string;
    jsonData: TJSONObject;
    recordcount, expire, agora: integer;
 
 begin
-
-   jsonData:=TJSONObject.Create;
-
-   token:=updateJWT(id);
-   refreshToken:=createRefreshToken;
-
-   try
-     queryData := TGetData.getData(
-       sql_queries.verify_refresh_token,
-       [r_token, id],
-       True
-     );
-
-     recordcount:=queryData.RecordCount;
-
-     expire:=queryData.FieldByName('expire').AsInteger;
-     agora:=DateTimeToUnix(now);
-
-     if (queryData.RecordCount = 1)  and
-       (queryData.FieldByName('expire').AsInteger >= DateTimeToUnix(now)) then
-     begin
-      TGetData.getData(
-        sql_queries.update_refresh_token,
-        [
-          refreshToken,
-          DateTimeToUnix(IncMonth(now, 1)),
-          id
-        ],
-        False
+  jsonData := TJSONObject.Create;
+  tipo := '';
+  queryData := nil;
+  try
+    queryData := TGetData.getData(
+      'select expire from loja where refresh_token = :refresh_token and uuid = :uuid',
+      [r_token, id], True
+    );
+    if queryData.RecordCount = 1 then
+      tipo := 'loja'
+    else
+    begin
+      queryData.Free;
+      queryData := TGetData.getData(
+        'select expire from vendedor where refresh_token = :refresh_token and uuid = :uuid',
+        [r_token, id], True
       );
-       jsonData.Add('r_token',refreshToken);
-       jsonData.Add('token', token);
-       jsonData.Add('status','200');
-     end
-     else
-     begin
-       jsonData.Add('r_token','');
-       jsonData.Add('token', '');
-       jsonData.Add('status','401');
-     end;
-   finally
-     queryData.Free;
-     Result:=jsonData.AsJSON;
-     jsonData.Free;
-     //Result.jsonString:=refreshToken;
-     //Result.json:=jsonData;
-   end;
+      if queryData.RecordCount = 1 then
+        tipo := 'vendedor';
+    end;
+
+    if (tipo <> '') and (queryData.FieldByName('expire').AsInteger >= DateTimeToUnix(now)) then
+    begin
+      token := updateJWT(id, tipo);
+      refreshToken := createRefreshToken;
+
+      if tipo = 'loja' then
+        TGetData.getData(
+          'update loja set refresh_token = :token, expire = :expire where uuid = :uuid;',
+          [refreshToken, DateTimeToUnix(IncMonth(now, 1)), id], False)
+      else
+        TGetData.getData(
+          'update vendedor set refresh_token = :token, expire = :expire where uuid = :uuid;',
+          [refreshToken, DateTimeToUnix(IncMonth(now, 1)), id], False);
+
+      jsonData.Add('r_token', refreshToken);
+      jsonData.Add('token', token);
+      jsonData.Add('status', '200');
+    end
+    else
+    begin
+      jsonData.Add('r_token', '');
+      jsonData.Add('token', '');
+      jsonData.Add('status', '401');
+    end;
+  finally
+    if Assigned(queryData) then queryData.Free;
+    Result := jsonData.AsJSON;
+    jsonData.Free;
+  end;
 end;
 
 
