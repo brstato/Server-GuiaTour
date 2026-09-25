@@ -123,7 +123,7 @@ begin
 
     // Salvar nova imagem
     caminho_salvar := ExpandFileName('./uploads/' + id_loja + '_' + nome_arquivo);
-    url_banco      := ExpandFileName('/imagens/' + id_loja + '_' + nome_arquivo);
+    url_banco      := '/imagens/' + id_loja + '_' + nome_arquivo;
 
     DecodedStr := DecodeStringBase64(base64_str);
     StringStream := TStringStream.Create(DecodedStr);
@@ -398,7 +398,7 @@ begin
 
     // Salvar nova imagem
     caminho_salvar := ExpandFileName('./uploads/' + id_loja + '_' + nome_arquivo);
-    url_banco      := ExpandFileName('/imagens/' + id_loja + '_' + nome_arquivo);
+    url_banco      := '/imagens/' + id_loja + '_' + nome_arquivo;
 
     DecodedStr := DecodeStringBase64(base64_str);
     StringStream := TStringStream.Create(DecodedStr);
@@ -438,7 +438,7 @@ begin
 
     // Salvar nova imagem
     caminho_salvar := ExpandFileName('./uploads/' + id_loja + '_' + nome_arquivo);
-    url_banco      := ExpandFileName('/imagens/' + id_loja + '_' + nome_arquivo);
+    url_banco      := '/imagens/' + id_loja + '_' + nome_arquivo;
 
     DecodedStr := DecodeStringBase64(base64_str);
     StringStream := TStringStream.Create(DecodedStr);
@@ -502,7 +502,7 @@ var
 begin
   try
     caminho_salvar := ExpandFileName('./uploads/' + id_loja + '_' + nome);
-    url_banco      := ExpandFileName('/imagens/'  + id_loja + '_' + nome);
+    url_banco      := '/imagens/'  + id_loja + '_' + nome;
     url_relativa   := 'uploads/' + id_loja + '_' + nome;
 
     DecodedStr := DecodeStringBase64(base64Str);
@@ -648,7 +648,7 @@ begin
     begin
       nome_arquivo   := 'dep_' + FormatDateTime('yyyymmddhhnnsszzz', Now) + extensao_foto;
       caminho_salvar := ExpandFileName('./uploads/' + id_loja + '_' + nome_arquivo);
-      url_banco      := ExpandFileName('/imagens/'  + id_loja + '_' + nome_arquivo);
+      url_banco      := '/imagens/'  + id_loja + '_' + nome_arquivo;
  
       DecodedStr := DecodeStringBase64(foto_base64);
       StringStream := TStringStream.Create(DecodedStr);

@@ -171,7 +171,7 @@ begin
       idLoja := dataSet.Fields[0].AsString;
 
       caminho_salvar_avatar := ExpandFileName('./uploads/' + uuidString + '_' + vendor.nome_arquivo_foto_avatar);
-      url_banco_avatar      := ExpandFileName('/imagens/' + uuidString + '_' + vendor.nome_arquivo_foto_avatar);
+      url_banco_avatar      := '/imagens/' + uuidString + '_' + vendor.nome_arquivo_foto_avatar;
 
       DecodedStrAvatar := DecodeStringBase64(vendor.avatar);
       StringStream := TStringStream.Create(DecodedStrAvatar);
@@ -179,7 +179,7 @@ begin
       FreeAndNil(StringStream);
 
       caminho_salvar_fotobio := ExpandFileName('./uploads/' + uuidString + '_' + vendor.nome_arquivo_foto_bio);
-      url_banco_fotobio      := ExpandFileName('/imagens/' + uuidString + '_' + vendor.nome_arquivo_foto_bio);
+      url_banco_fotobio      := '/imagens/' + uuidString + '_' + vendor.nome_arquivo_foto_bio;
 
       DecodedStrFotoBio := DecodeStringBase64(vendor.foto_bio);
       StringStream := TStringStream.Create(DecodedStrFotoBio);
@@ -187,7 +187,7 @@ begin
       FreeAndNil(StringStream);
 
       caminho_salvar_fotocapa := ExpandFileName('./uploads/' + uuidString + '_' + vendor.nome_arquivo_foto_avatar);
-      url_banco_fotocapa      := ExpandFileName('/imagens/' + uuidString + '_' + vendor.nome_arquivo_foto_avatar);
+      url_banco_fotocapa      := '/imagens/' + uuidString + '_' + vendor.nome_arquivo_foto_avatar;
 
       DecodedStrFotocapa := DecodeStringBase64(vendor.foto_capa);
       StringStream := TStringStream.Create(DecodedStrFotocapa);
@@ -201,10 +201,10 @@ begin
           [
               vendor.titulo,
               vendor.subtitulo,
-              caminho_salvar_avatar,
-              caminho_salvar_fotobio,
+              url_banco_avatar,
+              url_banco_fotobio,
               vendor.bio,
-              caminho_salvar_fotocapa,
+              url_banco_fotocapa,
               idLoja
           ],
           True
@@ -223,7 +223,7 @@ begin
            itemTrabalho := arrayTrabalhos.Objects[i];
 
            caminho_salvar := ExpandFileName('./uploads/' + uuidString + '_' + itemTrabalho.Strings['nome_arquivo']);
-           url_banco      := ExpandFileName('/imagens/' + uuidString + '_' + itemTrabalho.Strings['nome_arquivo']);
+           url_banco      := '/imagens/' + uuidString + '_' + itemTrabalho.Strings['nome_arquivo'];
 
            DecodedStr := DecodeStringBase64(itemTrabalho.Strings['itemTrabalho']);
            StringStream := TStringStream.Create(DecodedStr);
