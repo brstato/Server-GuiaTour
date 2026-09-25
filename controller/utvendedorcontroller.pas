@@ -133,8 +133,8 @@ end;
 procedure HandlerCriarComercio(Req: THorseRequest; Res: THorseResponse; next: TNextProc);
 var
   RequestJson: TJSONObject;
-  idVendedor, tipo, nome, telefone, email, slug, uuidLoja: string;
-  idCategoria: integer;
+  vendorList: TVendorList;
+  tipo, uuidLoja: string;
 begin
   RequestJson := nil;
   try
@@ -152,30 +152,56 @@ begin
         Exit;
       end;
 
-      idVendedor := TDataModule1.GetIdLoja(Req.Headers['Authorization']);
+      vendorList.idVendedor := TDataModule1.GetIdLoja(Req.Headers['Authorization']);
       RequestJson := TJSONObject(GetJSON(Req.Body));
 
-      nome        := TSecurityService.SanitizeInput(Trim(RequestJson.Get('nome', '')));
-      telefone    := TSecurityService.SanitizeInput(Trim(RequestJson.Get('telefone', '')));
-      email       := TSecurityService.SanitizeInput(Trim(RequestJson.Get('email', '')));
-      slug        := TSecurityService.SanitizeInput(Trim(RequestJson.Get('slug', '')));
-      idCategoria := RequestJson.Get('id_categoria', 0);
+      with vendorList do
+      begin
+        nome            := TSecurityService.SanitizeInput(Trim(RequestJson.Get('nome',             '')));
+        slug            := TSecurityService.SanitizeInput(Trim(RequestJson.Get('slug',             '')));
+        telefone        := TSecurityService.SanitizeInput(Trim(RequestJson.Get('telefone',         '')));
+        email           := TSecurityService.SanitizeInput(Trim(RequestJson.Get('email',            '')));
+        insta           := TSecurityService.SanitizeInput(Trim(RequestJson.Get('insta',            '')));
+        cep             := TSecurityService.SanitizeInput(Trim(RequestJson.Get('cep',              '')));
+        endereco        := TSecurityService.SanitizeInput(Trim(RequestJson.Get('endereco',         '')));
+        numero          := TSecurityService.SanitizeInput(Trim(RequestJson.Get('numero',           '')));
+        complemento     := TSecurityService.SanitizeInput(Trim(RequestJson.Get('complemento',      '')));
+        bairro          := TSecurityService.SanitizeInput(Trim(RequestJson.Get('bairro',           '')));
+        cidade          := TSecurityService.SanitizeInput(Trim(RequestJson.Get('cidade',           '')));
+        estado          := TSecurityService.SanitizeInput(Trim(RequestJson.Get('estado',           '')));
+        g_analytcs      := TSecurityService.SanitizeInput(Trim(RequestJson.Get('g_analytcs',       '')));
+        meta_pixel_id   := TSecurityService.SanitizeInput(Trim(RequestJson.Get('meta_pixel_id',    '')));
+        conta_google_ads:= TSecurityService.SanitizeInput(Trim(RequestJson.Get('conta_google_ads', '')));
+        horario         := TSecurityService.SanitizeInput(Trim(RequestJson.Get('horario',          '')));
+        titulo          := TSecurityService.SanitizeInput(Trim(RequestJson.Get('titulo',           '')));
+        subtitulo       := TSecurityService.SanitizeInput(Trim(RequestJson.Get('subtitulo',        '')));
+        bio             := TSecurityService.SanitizeInput(Trim(RequestJson.Get('bio',              '')));
 
-      if idCategoria <= 0 then
+        nome_arquivo_foto_avatar := TSecurityService.SanitizeInput(Trim(RequestJson.Get('nome_arquivo_foto_avatar','')));
+        nome_arquivo_foto_bio    := TSecurityService.SanitizeInput(Trim(RequestJson.Get('nome_arquivo_foto_bio',   '')));
+        nome_arquivo_foto_capa   := TSecurityService.SanitizeInput(Trim(RequestJson.Get('nome_arquivo_foto_capa',  '')));
+
+        foto_bio        := RequestJson.Get('foto_bio',  '');
+        avatar          := RequestJson.Get('avatar',    '');
+        foto_capa       := RequestJson.Get('foto_capa', '');
+        trabalhos       := RequestJson.Get('trabalhos', '');
+
+        vendorList.id_categoria := RequestJson.Get('id_categoria', 0);
+      end;
+
+      if vendorList.id_categoria <= 0 then
       begin
         TJsonView.SendError(Res, 400, 'Categoria é obrigatória.');
         Exit;
       end;
 
-      if (nome = '') or (email = '') then
+      if (vendorList.nome = '') or (vendorList.email = '') then
       begin
         TJsonView.SendError(Res, 400, 'Nome e e-mail são obrigatórios.');
         Exit;
       end;
 
-      uuidLoja := TVendedorModel.CriarComercio(
-        idVendedor, nome, telefone, email, slug, idCategoria
-      );
+      uuidLoja := TVendedorModel.CriarComercio(vendorList);
 
       TJsonView.SendResponse(Res,
         TJSONObject(GetJSON('{"uuid":"' + uuidLoja + '"}')), 201);
