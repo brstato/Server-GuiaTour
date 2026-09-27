@@ -151,24 +151,20 @@ end;
 
 procedure handlerGetSlug(Req: THorseRequest; Res: THorseResponse; next: TNextProc);
 var
-   jsonreq, jsonres: TJSONObject;
-   slug: string;
+   slug, idLoja: string;
    slug_bool: Boolean;
-   status_code: integer;
 begin
    try
-     try
-       slug := Req.Params['slug'];
+     slug := Req.Params['slug'];
 
-       status_code := TLojaModel.get_slug(slug);
+     idLoja := TDataModule1.GetIdLoja(req.Headers['Authorization']);
 
-       TJsonView.SendResponse(res, status_code);
-     except on e:exception do
-       TJsonView.SendError(res, 500, e.Message);
-     end;
-   finally
-     jsonreq.Free;
-     jsonres.Free;
+     if TLojaModel.get_slug(slug, idLoja) then
+        TJsonView.SendResponse(res, 409)
+     else
+        TJsonView.SendResponse(res, 200);
+   except on e:exception do
+     TJsonView.SendError(res, 500, e.Message);
    end;
 end;
 
