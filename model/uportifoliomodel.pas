@@ -40,6 +40,8 @@ type
     foto_capa   : string;
     CategoriaSlug:string;
     CategoriaNome:string;
+    RatingValue : string;
+    RatingCount : Integer;
     FotosGaleria: TArray<string>;
     CPosTattoo  : TArray<string>;
   end;
@@ -153,6 +155,7 @@ end;
 class function TProtifolioModel.GetBySlug(const Slug: string): TComercioPerfil;
 var
   dataset: TDataSet;
+  dsRating: TDataSet;
   FotosCount, CPosTattooCount: Integer;
   ConfigHorario: string;
   JData, JDay: TJSONObject;
@@ -214,6 +217,9 @@ begin
                  Result.foto_capa  := dataset.FieldByName('FOTO_CAPA'          ).AsString;
                  Result.UUid       := dataset.FieldByName('UUID'               ).AsString;
 
+                 Result.RatingValue := '';
+                 Result.RatingCount := 0;
+
                  NomesDias[1] := 'Sunday';
                  NomesDias[2] := 'Monday';
                  NomesDias[3] := 'Tuesday';
@@ -262,6 +268,28 @@ begin
                end;
             finally
               dataset.Free;
+            end;
+          end;
+
+         if Result.Encontrado and (Result.UUid <> '') then
+          begin
+            dsRating := TGetData.getData(
+              'SELECT AVG(NOTA) AS MEDIA, COUNT(*) AS QTD FROM DEPOIMENTOS ' +
+              'WHERE ID_LOJA = :id_loja AND STATUS = ''aprovado'';',
+              [Result.UUid],
+              True
+            );
+            if Assigned(dsRating) then
+            begin
+              try
+                Result.RatingCount := dsRating.FieldByName('QTD').AsInteger;
+                if Result.RatingCount > 0 then
+                  Result.RatingValue := FormatFloat('0.0', dsRating.FieldByName('MEDIA').AsFloat, FS)
+                else
+                  Result.RatingValue := '';
+              finally
+                dsRating.Free;
+              end;
             end;
           end;
 

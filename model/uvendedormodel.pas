@@ -186,8 +186,8 @@ begin
       StringStream.SaveToFile(caminho_salvar_fotobio);
       FreeAndNil(StringStream);
 
-      caminho_salvar_fotocapa := ExpandFileName('./uploads/' + uuidString + '_' + vendor.nome_arquivo_foto_avatar);
-      url_banco_fotocapa      := '/imagens/' + uuidString + '_' + vendor.nome_arquivo_foto_avatar;
+      caminho_salvar_fotocapa := ExpandFileName('./uploads/' + uuidString + '_' + vendor.nome_arquivo_foto_capa);
+      url_banco_fotocapa      := '/imagens/' + uuidString + '_' + vendor.nome_arquivo_foto_capa;
 
       DecodedStrFotocapa := DecodeStringBase64(vendor.foto_capa);
       StringStream := TStringStream.Create(DecodedStrFotocapa);

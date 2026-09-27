@@ -160,7 +160,7 @@ begin
      try
        slug := Req.Params['slug'];
 
-       //status_code := TLojaModel.get_slug(slug);
+       status_code := TLojaModel.get_slug(slug);
 
        TJsonView.SendResponse(res, status_code);
      except on e:exception do

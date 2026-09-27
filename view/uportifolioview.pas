@@ -43,6 +43,7 @@ var
   BaseUrl, UrlAbsolutaAvatar, UrlAbsolutaFotoBio, UrlAbsolutaCapa: string;
   EnderecoCompleto, MapsUrl, WhatsLimpo, UrlCanonica: string;
   CarrosselHtml, UrlFotoAbsoluta: string;
+  SchemaAggregateRating: string;
   i, p: Integer;
 begin
   // 1. Carrega o template HTML
@@ -123,6 +124,21 @@ begin
   HTMLFinal := StringReplace(HTMLFinal, '{{SCHEMA_ABRE}}', Perfil.SchemaAbre, [rfReplaceAll]);
   HTMLFinal := StringReplace(HTMLFinal, '{{SCHEMA_FECHA}}', Perfil.SchemaFecha, [rfReplaceAll]);
   HTMLFinal := StringReplace(HTMLFinal, '{{SCHEMA_INSTAGRAM_URL}}', Perfil.Insta, [rfReplaceAll]);
+
+  // aggregateRating — só entra no JSON-LD se houver ao menos 1 depoimento aprovado
+  // (o schema.org/Google exige reviewCount >= 1 quando o campo existe)
+  if Perfil.RatingCount > 0 then
+    SchemaAggregateRating :=
+      ',' + sLineBreak +
+      '    "aggregateRating": {' + sLineBreak +
+      '        "@type": "AggregateRating",' + sLineBreak +
+      '        "ratingValue": "' + Perfil.RatingValue + '",' + sLineBreak +
+      '        "reviewCount": "' + IntToStr(Perfil.RatingCount) + '"' + sLineBreak +
+      '    }'
+  else
+    SchemaAggregateRating := '';
+
+  HTMLFinal := StringReplace(HTMLFinal, '{{SCHEMA_AGGREGATE_RATING}}', SchemaAggregateRating, [rfReplaceAll]);
 
   // Trackers
   HTMLFinal := StringReplace(HTMLFinal, '{{META_PIXEL_ID}}', Perfil.meta_pixel, [rfReplaceAll]);

@@ -59,7 +59,7 @@
     },
     "sameAs": [
         "{{SCHEMA_INSTAGRAM_URL}}"
-    ] 
+    ]{{SCHEMA_AGGREGATE_RATING}}
     }
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -653,10 +653,12 @@
                     fetchpriority="high" onerror="this.style.opacity='0'">
                 <div class="cover-gradient"></div>
                 <div class="cover-content">
-                    <img src="{{COMERCIO_FOTO_URL}}" alt="Logo de {{COMERCIO_NOME}}" class="cover-avatar"
-                        onerror="this.style.display='none'">
+                    <a href="{{COMERCIO_FOTO_FULL_URL}}" data-pswp-width="1200" data-pswp-height="1200" target="_blank">
+                        <img src="{{COMERCIO_FOTO_URL}}" alt="Logo de {{COMERCIO_NOME}}" class="cover-avatar"
+                            onerror="this.style.display='none'">
+                    </a>
                     <div class="cover-info">
-                        <span class="cover-category">{{COMERCIO_CATEGORIA_NOME}}</span>
+                        <span class="cover-category cover-category--{{COMERCIO_CATEGORIA_SLUG}}">{{COMERCIO_CATEGORIA_NOME}}</span>
                         <h1 class="cover-info-value">{{COMERCIO_NOME}}</h1>
                         <span class="cover-location">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"

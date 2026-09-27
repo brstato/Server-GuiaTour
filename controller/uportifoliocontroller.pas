@@ -296,7 +296,6 @@ begin
     end;
   finally
     if Assigned(jsonreq) then jsonreq.Free;
-    DM.Free;
   end;
 end;
 
