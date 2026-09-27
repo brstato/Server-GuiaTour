@@ -136,7 +136,7 @@ begin
         Exit;
       end;
 
-      id_loja   := TSecurityService.SanitizeInput(jsonreq.Get('id_loja',   ''));
+      id_loja   := TDataModule1.GetTargetIdLoja(req.Headers['Authorization'], jsonreq);
       titulo    := TSecurityService.SanitizeInput(jsonreq.Get('titulo',    ''));
       subtitulo := TSecurityService.SanitizeInput(jsonreq.Get('subtitulo', ''));
       avatar    := TSecurityService.SanitizeInput(jsonreq.Get('avatar',    ''));
@@ -185,8 +185,9 @@ var
 begin
   jsonres := nil;
   try
-    //id_loja := req.Params['id_loja'];
-    id_loja := TDataModule1.GetIdLoja(req.Headers['Authorization']);
+    id_loja := req.Query['id_loja'];
+    if id_loja = '' then
+      id_loja := TDataModule1.GetIdLoja(req.Headers['Authorization']);
 
     if Trim(id_loja) = '' then
     begin
@@ -258,23 +259,6 @@ begin
   jsonreq := nil;
   try
     try
-      try
-        DM := TDataModule1.Create(nil);
-        id_loja := DM.GetIdLoja(req.Headers['Authorization']);
-      except
-        on E: Exception do
-        begin
-          TJsonView.SendError(res, 500, 'Erro ao ler token: ' + E.Message);
-          Exit;
-        end;
-      end;
-
-      if id_loja = '' then
-      begin
-        TJsonView.SendError(res, 401, 'Token inválido ou sem id_loja.');
-        Exit;
-      end;
-
       lJSONData := GetJSON(req.Body);
       if Assigned(lJSONData) and (lJSONData.JSONType = jtObject) then
         jsonreq := TJSONObject(lJSONData)
@@ -282,6 +266,14 @@ begin
       begin
         TJsonView.SendError(res, 400, 'JSON inválido.');
         if Assigned(lJSONData) then lJSONData.Free;
+        Exit;
+      end;
+
+      id_loja := TDataModule1.GetTargetIdLoja(req.Headers['Authorization'], jsonreq);
+
+      if id_loja = '' then
+      begin
+        TJsonView.SendError(res, 401, 'Token inválido ou sem id_loja.');
         Exit;
       end;
 
@@ -343,21 +335,6 @@ begin
   jsonres := nil;
   try
     try
-      try
-        id_loja := TDataModule1.GetIdLoja(req.Headers['Authorization']);
-      except on e:exception do
-      begin
-        TJsonView.SendError(res, 500, 'Erro ao ler token: ' + E.Message);
-        Exit;
-      end;
-      end;
-
-      if id_loja = '' then
-      begin
-        TJsonView.SendError(res, 401, 'Token inválido ou sem id_loja.');
-        Exit;
-      end;
-
       lJSONData := GetJSON(req.Body);
       if Assigned(lJSONData) and (lJSONData.JSONType = jtObject) then
         jsonreq := TJSONObject(lJSONData)
@@ -365,6 +342,14 @@ begin
       begin
         TJsonView.SendError(res, 400, 'JSON inválido.');
         if Assigned(lJSONData) then lJSONData.Free;
+        Exit;
+      end;
+
+      id_loja := TDataModule1.GetTargetIdLoja(req.Headers['Authorization'], jsonreq);
+
+      if id_loja = '' then
+      begin
+        TJsonView.SendError(res, 401, 'Token inválido ou sem id_loja.');
         Exit;
       end;
 
@@ -407,21 +392,6 @@ begin
   jsonres := nil;
   try
     try
-      try
-        id_loja := TDataModule1.GetIdLoja(req.Headers['Authorization']);
-      except on e:exception do
-      begin
-        TJsonView.SendError(res, 500, 'Erro ao ler token: ' + E.Message);
-        Exit;
-      end;
-      end;
-
-      if id_loja = '' then
-      begin
-        TJsonView.SendError(res, 401, 'Token inválido ou sem id_loja.');
-        Exit;
-      end;
-
       lJSONData := GetJSON(req.Body);
       if Assigned(lJSONData) and (lJSONData.JSONType = jtObject) then
         jsonreq := TJSONObject(lJSONData)
@@ -429,6 +399,14 @@ begin
       begin
         TJsonView.SendError(res, 400, 'JSON inválido.');
         if Assigned(lJSONData) then lJSONData.Free;
+        Exit;
+      end;
+
+      id_loja := TDataModule1.GetTargetIdLoja(req.Headers['Authorization'], jsonreq);
+
+      if id_loja = '' then
+      begin
+        TJsonView.SendError(res, 401, 'Token inválido ou sem id_loja.');
         Exit;
       end;
 
@@ -545,17 +523,17 @@ begin
   json_req := nil;
   try
     try
-      id_loja := TDataModule1.GetIdLoja(req.Headers['Authorization']);
-      if Id_Loja = '' then
-      begin
-        TJsonView.SendError(res, 400, 'Id não encontrado.');
-        exit;
-      end;
-
       json_req := TJSONObject(GetJSON(req.Body));
       if not Assigned(json_req) then
       begin
         TJsonView.SendError(res, 400, 'Json mal formado.');
+        exit;
+      end;
+
+      id_loja := TDataModule1.GetTargetIdLoja(req.Headers['Authorization'], json_req);
+      if Id_Loja = '' then
+      begin
+        TJsonView.SendError(res, 400, 'Id não encontrado.');
         exit;
       end;
 
@@ -590,21 +568,6 @@ begin
   jsonres := nil;
   try
     try
-      try
-        id_loja := TDataModule1.GetIdLoja(req.Headers['Authorization']);
-      except on e:exception do
-      begin
-        TJsonView.SendError(res, 500, 'Erro ao ler token: ' + E.Message);
-        Exit;
-      end;
-      end;
-
-      if id_loja = '' then
-      begin
-        TJsonView.SendError(res, 401, 'Token inválido ou sem id_loja.');
-        Exit;
-      end;
-
       lJSONData := GetJSON(req.Body);
       if Assigned(lJSONData) and (lJSONData.JSONType = jtObject) then
         jsonreq := TJSONObject(lJSONData)
@@ -612,6 +575,14 @@ begin
       begin
         TJsonView.SendError(res, 400, 'JSON inválido.');
         if Assigned(lJSONData) then lJSONData.Free;
+        Exit;
+      end;
+
+      id_loja := TDataModule1.GetTargetIdLoja(req.Headers['Authorization'], jsonreq);
+
+      if id_loja = '' then
+      begin
+        TJsonView.SendError(res, 401, 'Token inválido ou sem id_loja.');
         Exit;
       end;
 

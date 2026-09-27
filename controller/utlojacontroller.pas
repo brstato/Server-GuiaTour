@@ -28,8 +28,10 @@ var
    LModel: TLojaModel;
    id: string;
 begin
-   //id := Req.Params['id'];
-   id := TDataModule1.GetIdLoja(Req.Headers['Authorization']);
+   id := Req.Query['id_loja'];
+   if id = '' then
+     id := TDataModule1.GetIdLoja(Req.Headers['Authorization']);
+
    LModel := TLojaModel.Create;
    try
      try
@@ -390,28 +392,26 @@ begin
 end;
 
 
-procedure HandlerUpdateAccounBasico(req: THorseRequest; res: THorseResponse;
-  next: TNextProc);
+procedure HandlerUpdateAccounBasico(req: THorseRequest; res: THorseResponse; next: TNextProc);
 var
   id_loja, nome, apelido: string;
   json_req: TJSONObject;
   id_categoria: integer;
 begin
-  id_loja := TDataModule1.GetIdLoja(req.Headers['Authorization']);
-
   try
     try
       json_req := TJSONObject(GetJSON(req.Body));
 
-      if not  Assigned(json_req) then
+      if not Assigned(json_req) then
       begin
         TJsonView.SendError(res, 400, 'Json invalido');
         exit;
       end;
 
+      id_loja := TDataModule1.GetTargetIdLoja(req.Headers['Authorization'], json_req);
+
       nome    := TSecurityService.SanitizeInput(json_req.get('nome',    ''));
       apelido := TSecurityService.SanitizeInput(json_req.get('apelido', ''));
-
       id_categoria := json_req.Get('id_categoria', 0);
 
       apelido := TLojaModel.GerarSlug(apelido);
@@ -445,17 +445,17 @@ begin
   json_req := nil;
   try
     try
-        id_loja := TDataModule1.GetIdLoja(req.Headers['Authorization']);
-        if id_loja = '' then
-        begin
-          TJsonView.SendError(res, 400, 'Id não informado.');
-          exit;
-        end;
-
         json_req := TJSONObject(GetJSON(req.Body));
         if not Assigned(json_req) then
         begin
           TJsonView.SendError(res, 400, 'Json mal formado.');
+          exit;
+        end;
+
+        id_loja := TDataModule1.GetTargetIdLoja(req.Headers['Authorization'], json_req);
+        if id_loja = '' then
+        begin
+          TJsonView.SendError(res, 400, 'Id não informado.');
           exit;
         end;
 
@@ -490,17 +490,17 @@ begin
   jsonReq := nil;
   try
     try
-      id_loja := TDataModule1.GetIdLoja(req.Headers['Authorization']);
-      if (id_loja = '') or (id_loja.IsEmpty) then
-      begin
-        TJsonView.SendError(res, 400, 'Id não informado.');
-        exit;
-      end;
-
       jsonReq := TJSONObject(GetJSON(req.Body));
       if not Assigned(jsonReq) then
       begin
         TJsonView.SendError(res, 400, 'Json mal formado.');
+        exit;
+      end;
+
+      id_loja := TDataModule1.GetTargetIdLoja(req.Headers['Authorization'], jsonReq);
+      if (id_loja = '') or (id_loja.IsEmpty) then
+      begin
+        TJsonView.SendError(res, 400, 'Id não informado.');
         exit;
       end;
 
@@ -581,17 +581,17 @@ begin
 
   try
     try
-      id_loja := TDataModule1.GetIdLoja(req.Headers['Authorization']);
-      if (id_loja = '') or (id_loja.IsEmpty) then
-      begin
-        TJsonView.SendError(res, 400, 'Id não informado.');
-        exit;
-      end;
-
       jsonReq := TJSONObject(GetJSON(req.Body));
       if not Assigned(jsonReq) then
       begin
         TJsonView.SendError(res, 400, 'Json mal formado.');
+        exit;
+      end;
+
+      id_loja := TDataModule1.GetTargetIdLoja(req.Headers['Authorization'], jsonReq);
+      if (id_loja = '') or (id_loja.IsEmpty) then
+      begin
+        TJsonView.SendError(res, 400, 'Id não informado.');
         exit;
       end;
 

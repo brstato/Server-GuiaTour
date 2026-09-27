@@ -119,9 +119,6 @@ begin
     TJsonView.SendResponseJsonObject(Res, jsonRes, 200);
   except on e: Exception do
     begin
-      // jsonRes já é dono de arrayItens depois do Add acima — liberar os
-      // dois separadamente seria double free. Só libera arrayItens direto
-      // se ele ainda não foi anexado a jsonRes.
       if Assigned(jsonRes) then FreeAndNil(jsonRes)
       else if Assigned(arrayItens) then FreeAndNil(arrayItens);
       WriteLn('Erro em: HandlerListarComercios - ' + e.Message);

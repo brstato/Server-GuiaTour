@@ -33,6 +33,7 @@ type
     class function GetIdLoja(const auth: String): String;
     class function GetClaim(const auth, claimName: String): String;
     class function GetTipoUsuario(const auth: String): String;
+    class function GetTargetIdLoja(const auth: String; jsonBody: TJSONObject): String;
   end;
 
 var
@@ -77,6 +78,22 @@ class function TDataModule1.GetTipoUsuario(const auth: String): String;
 begin
   Result := GetClaim(auth, 'tipo');
   if Result = '' then Result := 'loja'; // tokens antigos, emitidos antes desta mudança, continuam valendo como loja
+end;
+
+class function TDataModule1.GetTargetIdLoja(const auth: String; jsonBody: TJSONObject): String;
+begin
+  Result := '';
+  // 1. Tenta obter do JSON (corpo da requisição) - aceita id_loja, uuid ou id
+  if Assigned(jsonBody) then
+  begin
+    Result := jsonBody.Get('id_loja', '');
+    if Result = '' then Result := jsonBody.Get('uuid', '');
+    if Result = '' then Result := jsonBody.Get('id', '');
+  end;
+
+  // 2. Fallback para o ID do token se o JSON não tiver identificação
+  if Result = '' then
+    Result := GetIdLoja(auth);
 end;
 
 

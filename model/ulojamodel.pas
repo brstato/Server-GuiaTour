@@ -532,8 +532,6 @@ class procedure TLojaModel.UpdateAccounBasico(id, nome, apelido: string;
   id_categoria:integer);
 begin
   try
-    apelido := GerarSlug(apelido);
-
     TGetData.getData(
       'update loja set nome = :nome, slug = :apelido, id_categoria = :id_categoria '+
       'where uuid = :id;',
