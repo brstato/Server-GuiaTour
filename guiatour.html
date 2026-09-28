@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="pt-BR" translate="yes">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta name="description" content="Descubra pontos turísticos, história, gastronomia e experiências locais.">
+  <title>GuiaTour — Descubra o Local</title>
+
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    :root {
+      --primary: #0284c7;
+      --primary-hover: #0369a1;
+      --accent: #f59e0b;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding-bottom: 60px;
+    }
+
+    /* Top Bar */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+    }
+
+    .search-bar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .input-box {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-box input {
+      width: 100%;
+      height: 42px;
+      padding: 0 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      font-size: 15px;
+      outline: none;
+      background: var(--bg);
+      transition: border-color 0.2s;
+    }
+
+    .input-box input:focus {
+      border-color: var(--primary);
+    }
+
+    .btn-gps {
+      height: 42px;
+      padding: 0 14px;
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+      font-size: 13px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .btn-gps:active {
+      background: var(--primary-hover);
+    }
+
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    /* Hero Carousel */
+    .carousel-section {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--radius-lg);
+      background: #000;
+      height: 260px;
+      box-shadow: var(--shadow);
+    }
+
+    .carousel-track {
+      display: flex;
+      height: 100%;
+      transition: transform 0.6s ease-in-out;
+    }
+
+    .carousel-slide {
+      min-width: 100%;
+      position: relative;
+    }
+
+    .carousel-slide img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.85;
+    }
+
+    .carousel-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 16px;
+      background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+      color: #fff;
+    }
+
+    .carousel-overlay h3 {
+      font-size: 18px;
+      margin-bottom: 2px;
+    }
+
+    .carousel-overlay p {
+      font-size: 13px;
+      color: #cbd5e1;
+    }
+
+    /* Informações do Ponto */
+    .info-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 10px;
+      background: #e0f2fe;
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 20px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .info-card h1 {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+
+    .info-card .resumo {
+      color: var(--muted);
+      font-size: 15px;
+      margin-bottom: 16px;
+    }
+
+    .historia-content {
+      font-size: 14px;
+      line-height: 1.7;
+      color: #334155;
+      max-height: 120px;
+      overflow: hidden;
+      position: relative;
+      transition: max-height 0.4s ease;
+    }
+
+    .historia-content.expanded {
+      max-height: 2000px;
+    }
+
+    .btn-ver-mais {
+      background: none;
+      border: none;
+      color: var(--primary);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      display: block;
+    }
+
+    /* Galeria Horizontal */
+    .section-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .gallery-scroller {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      scrollbar-width: none;
+    }
+    .gallery-scroller::-webkit-scrollbar {
+      display: none;
+    }
+
+    .gallery-thumb {
+      min-width: 140px;
+      height: 100px;
+      border-radius: var(--radius-md);
+      object-fit: cover;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* Mapa */
+    .map-container {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    #map {
+      width: 100%;
+      height: 260px;
+      border-radius: var(--radius-md);
+      z-index: 1;
+    }
+
+    /* Lista de Comércios */
+    .comercios-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .comercio-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      display: flex;
+      gap: 14px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      align-items: center;
+      transition: transform 0.15s ease;
+      cursor: pointer;
+    }
+
+    .comercio-card:active {
+      transform: scale(0.98);
+    }
+
+    .comercio-avatar {
+      width: 76px;
+      height: 76px;
+      border-radius: var(--radius-md);
+      object-fit: cover;
+      background: #cbd5e1;
+      flex-shrink: 0;
+    }
+
+    .comercio-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .comercio-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .comercio-nome {
+      font-size: 15px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .comercio-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: #fef3c7;
+      color: #92400e;
+      flex-shrink: 0;
+    }
+
+    .comercio-cat {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 2px 0 6px 0;
+    }
+
+    .comercio-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .distancia {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .btn-visitar {
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <header>
+    <div class="search-bar">
+      <div class="input-box">
+        <input type="text" id="inputLocal" placeholder="Buscar cidade ou ponto...">
+      </div>
+      <button class="btn-gps" id="btnGps" onclick="acionarGPS()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
+        </svg>
+        Perto de mim
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Carrossel de Descoberta / Pontos Próximos -->
+    <section class="carousel-section" id="carousel">
+      <div class="carousel-track" id="carouselTrack"></div>
+    </section>
+
+    <!-- Ficha Principal do Ponto Turístico -->
+    <article class="info-card">
+      <span class="tag" id="pontoCategoria">Turismo</span>
+      <h1 id="pontoNome">Carregando ponto...</h1>
+      <p class="resumo" id="pontoResumo">Buscando informações do local...</p>
+      
+      <div class="historia-content" id="pontoHistoria"></div>
+      <button class="btn-ver-mais" id="btnVerMais" onclick="toggleHistoria()">Ler história completa</button>
+    </article>
+
+    <!-- Fotos da Galeria -->
+    <section>
+      <div class="section-title">Galeria de Fotos</div>
+      <div class="gallery-scroller" id="galeriaFotos"></div>
+    </section>
+
+    <!-- O que fazer em volta: Mapa com Pins do Comércio -->
+    <section class="map-container">
+      <div class="section-title">
+        <span>No entorno do local</span>
+      </div>
+      <div id="map"></div>
+    </section>
+
+    <!-- Cards de Atividades e Comércio Local -->
+    <section>
+      <div class="section-title">
+        <span>Onde comer e aproveitar por aqui</span>
+      </div>
+      <div class="comercios-grid" id="listaComercios"></div>
+    </section>
+  </main>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    // Estado da Aplicação
+    let pontoAtual = null;
+    let mapa = null;
+    let markersLayer = null;
+    let slideTimer = null;
+    let slideIndex = 0;
+
+    // Dados Mock para inicialização visual e testes
+    const MOCK_PONTO = {
+      nome: "Centro Histórico & Cais Santa Luzia",
+      slug: "cais-santa-luzia",
+      categoria_nome: "Patrimônio Cultural",
+      resumo: "Ponto de partida para passeios náuticos, cercado por arquitetura colonial e brisa marítima.",
+      historia: "O Cais de Santa Luzia e o centro histórico formam o coração comercial e turístico regional desde os séculos coloniais. Por aqui escoava-se o comércio marítimo e hoje reúne os principais saveiros e lanchas que exploram as ilhas e praias preservadas da baía. As ruas de pedra ao redor abrigam tradições centenárias, casarios históricos e uma culinária litorânea rica em frutos do mar.",
+      latitude: -23.0065,
+      longitude: -44.3182,
+      capa: "https://images.unsplash.com/photo-1518684079-3c830dcef090?w=1000&q=80",
+      galeria: [
+        { url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500&q=80" },
+        { url: "https://images.unsplash.com/photo-1519046904884-53103b34b206?w=500&q=80" },
+        { url: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=500&q=80" }
+      ]
+    };
+
+    const MOCK_COMERCIOS = [
+      {
+        nome: "Restaurante Cais & Mar",
+        slug: "cais-e-mar",
+        categoria: "Frutos do Mar",
+        avatar: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200&q=80",
+        distancia_km: 0.2,
+        destacado: true,
+        latitude: -23.0070,
+        longitude: -44.3175
+      },
+      {
+        nome: "Passeios Náuticos Mar Adentro",
+        slug: "mar-adentro-tours",
+        categoria: "Passeios de Lancha",
+        avatar: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=200&q=80",
+        distancia_km: 0.4,
+        destacado: true,
+        latitude: -23.0055,
+        longitude: -44.3190
+      },
+      {
+        nome: "Café Colonial do Porto",
+        slug: "cafe-do-porto",
+        categoria: "Cafeteria & Bistrô",
+        avatar: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=200&q=80",
+        distancia_km: 0.6,
+        destacado: false,
+        latitude: -23.0080,
+        longitude: -44.3160
+      }
+    ];
+
+    const MOCK_CAROUSEL_SPOTS = [
+      {
+        nome: "Ilha Grande — Vila do Abraão",
+        resumo: "Praias cristalinas e trilhas na mata Atlântica.",
+        capa: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80"
+      },
+      {
+        nome: "Praia do Dentista",
+        resumo: "Águas calmas e parada obrigatória de embarcações.",
+        capa: "https://images.unsplash.com/photo-1519046904884-53103b34b206?w=800&q=80"
+      },
+      {
+        nome: "Colégio Naval & Mirante",
+        resumo: "Pôr do sol panorâmico voltado para a baía.",
+        capa: "https://images.unsplash.com/photo-1518684079-3c830dcef090?w=800&q=80"
+      }
+    ];
+
+    // Inicialização da Página
+    document.addEventListener("DOMContentLoaded", () => {
+      carregarPontoTuristico(MOCK_PONTO);
+      iniciarCarrossel(MOCK_CAROUSEL_SPOTS);
+      carregarComercios(MOCK_COMERCIOS);
+      inicializarMapa(MOCK_PONTO, MOCK_COMERCIOS);
+      configurarBuscaManual();
+    });
+
+    // Renderiza dados do ponto principal
+    function carregarPontoTuristico(dados) {
+      pontoAtual = dados;
+      document.getElementById("pontoNome").textContent = dados.nome;
+      document.getElementById("pontoCategoria").textContent = dados.categoria_nome || "Atrativo";
+      document.getElementById("pontoResumo").textContent = dados.resumo;
+      document.getElementById("pontoHistoria").textContent = dados.historia;
+
+      // Galeria de fotos
+      const galeriaEl = document.getElementById("galeriaFotos");
+      galeriaEl.innerHTML = "";
+      if (dados.galeria && dados.galeria.length > 0) {
+        dados.galeria.forEach(item => {
+          const img = document.createElement("img");
+          img.className = "gallery-thumb";
+          img.src = item.url;
+          img.alt = dados.nome;
+          galeriaEl.appendChild(img);
+        });
+      }
+    }
+
+    // Carrossel com Autoplay
+    function iniciarCarrossel(itens) {
+      const track = document.getElementById("carouselTrack");
+      track.innerHTML = "";
+      if (slideTimer) clearInterval(slideTimer);
+
+      itens.forEach(item => {
+        const slide = document.createElement("div");
+        slide.className = "carousel-slide";
+        slide.innerHTML = `
+          <img src="${item.capa}" alt="${item.nome}">
+          <div class="carousel-overlay">
+            <h3>${item.nome}</h3>
+            <p>${item.resumo}</p>
+          </div>
+        `;
+        track.appendChild(slide);
+      });
+
+      slideIndex = 0;
+      slideTimer = setInterval(() => {
+        slideIndex = (slideIndex + 1) % itens.length;
+        track.style.transform = `translateX(-${slideIndex * 100}%)`;
+      }, 4000);
+    }
+
+    // Toggle da História Completa
+    function toggleHistoria() {
+      const histEl = document.getElementById("pontoHistoria");
+      const btn = document.getElementById("btnVerMais");
+      histEl.classList.toggle("expanded");
+      btn.textContent = histEl.classList.contains("expanded") ? "Recolher história" : "Ler história completa";
+    }
+
+    // Renderiza Cards dos Comerciantes Locais
+    function carregarComercios(comercios) {
+      const container = document.getElementById("listaComercios");
+      container.innerHTML = "";
+
+      comercios.forEach(com => {
+        const card = document.createElement("div");
+        card.className = "comercio-card";
+        card.onclick = () => window.location.href = `/loja/${com.slug}`;
+
+        card.innerHTML = `
+          <img class="comercio-avatar" src="${com.avatar}" alt="${com.nome}">
+          <div class="comercio-info">
+            <div class="comercio-header">
+              <span class="comercio-nome">${com.nome}</span>
+              ${com.destacado ? '<span class="comercio-badge">Destaque</span>' : ''}
+            </div>
+            <div class="comercio-cat">${com.categoria}</div>
+            <div class="comercio-footer">
+              <span class="distancia">${com.distancia_km} km de você</span>
+              <span class="btn-visitar">Ver espaço</span>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // Mapa Leaflet com os Pins
+    function inicializarMapa(ponto, comercios) {
+      if (!mapa) {
+        mapa = L.map("map", { scrollWheelZoom: false }).setView([ponto.latitude, ponto.longitude], 15);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: '&copy; OpenStreetMap'
+        }).addTo(mapa);
+        markersLayer = L.layerGroup().addTo(mapa);
+      } else {
+        markersLayer.clearLayers();
+        mapa.setView([ponto.latitude, ponto.longitude], 15);
+      }
+
+      // Pin do Ponto Turístico
+      const iconPonto = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34]
+      });
+
+      L.marker([ponto.latitude, ponto.longitude], { icon: iconPonto })
+        .addTo(markersLayer)
+        .bindPopup(`<b>${ponto.nome}</b><br>Você está visualizando este ponto.`)
+        .openPopup();
+
+      // Pins dos Comerciantes (Azul)
+      comercios.forEach(com => {
+        if (com.latitude && com.longitude) {
+          L.marker([com.latitude, com.longitude])
+            .addTo(markersLayer)
+            .bindPopup(`<b>${com.nome}</b><br>${com.categoria}<br><a href="/loja/${com.slug}">Ver Detalhes</a>`);
+        }
+      });
+    }
+
+    // Geolocalização pelo Navegador (GPS)
+    function acionarGPS() {
+      const btn = document.getElementById("btnGps");
+      btn.textContent = "Localizando...";
+
+      if (!navigator.geolocation) {
+        alert("Geolocalização não é suportada pelo seu navegador.");
+        btn.textContent = "Perto de mim";
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          btn.textContent = "Próximo a você";
+          const { latitude, longitude } = position.coords;
+          
+          try {
+            // Chamada à API real registrada no Horse: api/v1/explorar/pontos?lat=...&lng=...
+            const res = await fetch(`/api/v1/explorar/pontos?lat=${latitude}&lng=${longitude}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.itens && data.itens.length > 0) {
+                iniciarCarrossel(data.itens);
+              }
+            }
+          } catch (e) {
+            console.warn("API de exploração offline. Mantendo visualização contextual.");
+          }
+        },
+        (error) => {
+          btn.textContent = "Perto de mim";
+          if (error.code === error.PERMISSION_DENIED) {
+            alert("Permissão de GPS negada. Você pode pesquisar manualmente no campo de busca.");
+          }
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    }
+
+    // Pesquisa Manual
+    function configurarBuscaManual() {
+      const input = document.getElementById("inputLocal");
+      input.addEventListener("keydown", async (e) => {
+        if (e.key === "Enter" && input.value.trim() !== "") {
+          const query = input.value.trim();
+          input.blur();
+          
+          // Integração com a busca de pontos / slug
+          try {
+            const res = await fetch(`/api/v1/ponto/${encodeURIComponent(query.toLowerCase())}`);
+            if (res.ok) {
+              const pontoData = await res.json();
+              carregarPontoTuristico(pontoData);
+              inicializarMapa(pontoData, MOCK_COMERCIOS);
+            } else {
+              alert("Nenhum atrativo encontrado com esse nome.");
+            }
+          } catch (err) {
+            console.log("Modo demonstração ativo.");
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>

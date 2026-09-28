@@ -98,6 +98,15 @@
         <Filename Value="controller/utvendedorcontroller.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="controller/utpontoscontroller.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="utPontoscontroller"/>
+      </Unit>
+      <Unit>
+        <Filename Value="model/upontoturisticomodel.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

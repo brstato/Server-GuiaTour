@@ -13,7 +13,8 @@ uses
   udata, uconfig, usecurityservice, uNetService, ugetdata, uJsonView,
   uguiatourview, CustApp, urouter, uTlogincontroller, utlojacontroller,
   uportifoliocontroller, uloginmodel, ulojamodel, uportifoliomodel,
-  uvendedormodel, Horse, utvendedorcontroller
+  uvendedormodel, Horse, utvendedorcontroller, utPontoscontroller,
+  upontoturisticomodel
   ;
 
 type
