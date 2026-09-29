@@ -9,7 +9,9 @@ const
   RAIO_BASE_KM            = 5.0;  // raio padrão de visibilidade do comércio
   RAIO_EXTRA_POR_NIVEL_KM = 5.0;  // cada nível de PLANO_DESTAQUE soma esse tanto ao raio
   LIMITE_COMERCIOS_PROXIMOS = 12;
-  MAX_IMAGEM_BYTES = 5 * 1024 * 1024;
+  MAX_IMAGEM_BYTES  = 5 * 1024 * 1024;   // tamanho máximo de cada imagem já decodificada
+  MAX_FOTOS_GALERIA = 20;                // máximo de fotos por requisição
+  MAX_SLUG_BASE     = 140;               // deixa folga para o sufixo "-N" (coluna slug: 160)
 
 type
   EImagemInvalida = class(Exception);
@@ -33,6 +35,13 @@ type
     galeria: string;
     id_categoria: integer;
   end;
+
+  // Imagem já validada e decodificada, pronta para gravar em disco.
+  TImagemPreparada = record
+    nomeSeguro: string;   // <uuid do ponto>_<guid>.<ext>
+    dados: string;        // bytes decodificados
+  end;
+  TImagensPreparadas = array of TImagemPreparada;
 
 type
 
@@ -58,7 +67,12 @@ type
     class function GerarNomeArquivoSeguro(const NomeOriginal, UuidPonto: string; out NomeFinal: string): Boolean;
   private
     class function MontarGaleriaJson(idPonto: integer): TJSONArray;
-    class procedure SalvarItensGaleria(const uuidString, galeriaJson: string; idPonto: integer);
+    class function ConteudoPareceImagem(const dados: string): Boolean;
+    class function PrepararImagem(const nomeOriginal, base64Str, uuidPonto, rotulo: string): TImagemPreparada;
+    class function PrepararGaleria(const galeriaJson, uuidPonto: string): TImagensPreparadas;
+    class procedure SalvarArquivoUpload(const nomeSeguro, dados: string);
+    class function CaminhoUploadSeguro(const urlFoto: string; out caminho: string): Boolean;
+    class procedure SalvarItensGaleria(const itens: TImagensPreparadas; idPonto: integer);
   end;
 
 implementation
@@ -92,79 +106,182 @@ begin
   end;
 end;
 
-// Decodifica e salva cada item de galeria em disco + insere a linha,
-// mantendo a ordem recebida (soma à ordem que já existir, pra suportar
-// "adicionar mais fotos" em cima de um ponto já existente).
-class procedure TPontoTuristicoModel.SalvarItensGaleria(const uuidString, galeriaJson: string; idPonto: integer);
+// Confere a "assinatura" (magic bytes) do arquivo: JPEG, PNG ou WEBP.
+// Impede que um arquivo qualquer seja enviado apenas trocando a extensão.
+class function TPontoTuristicoModel.ConteudoPareceImagem(const dados: string): Boolean;
+begin
+  Result := False;
+  if Length(dados) < 12 then Exit;
+
+  // JPEG: FF D8 FF
+  if (dados[1] = #$FF) and (dados[2] = #$D8) and (dados[3] = #$FF) then
+  begin
+    Result := True;
+    Exit;
+  end;
+
+  // PNG: 89 'PNG' 0D 0A 1A 0A
+  if Copy(dados, 1, 8) = (#$89 + 'PNG' + #$0D#$0A#$1A#$0A) then
+  begin
+    Result := True;
+    Exit;
+  end;
+
+  // WEBP: 'RIFF' ???? 'WEBP'
+  if (Copy(dados, 1, 4) = 'RIFF') and (Copy(dados, 9, 4) = 'WEBP') then
+    Result := True;
+end;
+
+// Valida (extensão, tamanho, base64 e conteúdo) e decodifica UMA imagem.
+// Não grava nada em disco — assim dá pra validar tudo antes de tocar no banco.
+class function TPontoTuristicoModel.PrepararImagem(
+  const nomeOriginal, base64Str, uuidPonto, rotulo: string): TImagemPreparada;
 var
+  limiteBase64: Integer;
+begin
+  Result.nomeSeguro := '';
+  Result.dados := '';
+
+  if not GerarNomeArquivoSeguro(nomeOriginal, uuidPonto, Result.nomeSeguro) then
+    raise EImagemInvalida.Create('Extensão de imagem ' + rotulo + ' não permitida.');
+
+  // rejeita antes de decodificar strings gigantes (base64 ocupa ~4/3 do original)
+  limiteBase64 := ((MAX_IMAGEM_BYTES + 2) div 3) * 4 + 8;
+  if Length(base64Str) > limiteBase64 then
+    raise EImagemInvalida.Create('Imagem ' + rotulo + ' muito grande.');
+
+  try
+    Result.dados := DecodeStringBase64(base64Str);
+  except
+    raise EImagemInvalida.Create('Imagem ' + rotulo + ' com base64 inválido.');
+  end;
+
+  if Length(Result.dados) > MAX_IMAGEM_BYTES then
+    raise EImagemInvalida.Create('Imagem ' + rotulo + ' muito grande.');
+
+  if not ConteudoPareceImagem(Result.dados) then
+    raise EImagemInvalida.Create('Arquivo ' + rotulo + ' não é uma imagem JPEG, PNG ou WEBP válida.');
+end;
+
+// Valida e decodifica todas as fotos da galeria de uma vez.
+// Se qualquer foto for inválida, levanta EImagemInvalida sem ter gravado nada.
+class function TPontoTuristicoModel.PrepararGaleria(
+  const galeriaJson, uuidPonto: string): TImagensPreparadas;
+var
+  jsonData: TJSONData;
   arrayGaleria: TJSONArray;
   itemGaleria: TJSONObject;
-  jsonData: TJSONData;
-  dataset: TDataSet;
-  i, ordemBase: integer;
-  caminho_salvar, url_banco, DecodedStr, nome_arquivo, itemFoto, nome_seguro: string;
-  StringStream: TStringStream;
+  i, k: integer;
+  nome_arquivo, itemFoto: string;
 begin
+  Result := nil;
   if Trim(galeriaJson) = '' then Exit;
 
-  jsonData := GetJSON(galeriaJson);
   try
-    if jsonData.JSONType <> jtArray then Exit;
+    jsonData := GetJSON(galeriaJson);
+  except
+    raise EImagemInvalida.Create('Galeria em formato inválido.');
+  end;
+
+  try
+    if jsonData.JSONType <> jtArray then
+      raise EImagemInvalida.Create('Galeria em formato inválido.');
 
     arrayGaleria := TJSONArray(jsonData);
-    if arrayGaleria.Count = 0 then Exit;
+    if arrayGaleria.Count > MAX_FOTOS_GALERIA then
+      raise EImagemInvalida.Create('Fotos demais em uma única requisição.');
 
-    dataset := nil;
-    ordemBase := 0;
-    try
-      dataset := TGetData.getData(
-        'SELECT COALESCE(MAX(ordem), -1) AS max_ordem FROM ponto_turistico_galeria ' +
-        'WHERE id_ponto = :idPonto;',
-        [idPonto],
-        True
-      );
-      if Assigned(dataset) and not dataset.IsEmpty then
-        ordemBase := dataset.FieldByName('max_ordem').AsInteger + 1;
-    finally
-      dataset.Free;
+    SetLength(Result, arrayGaleria.Count);
+    k := 0;
+    for i := 0 to arrayGaleria.Count - 1 do
+    begin
+      if arrayGaleria.Items[i].JSONType <> jtObject then Continue;
+
+      itemGaleria  := arrayGaleria.Objects[i];
+      nome_arquivo := itemGaleria.Get('nome_arquivo', '');
+      itemFoto     := itemGaleria.Get('itemFoto', '');
+
+      if (nome_arquivo = '') or (itemFoto = '') then Continue;
+
+      Result[k] := PrepararImagem(nome_arquivo, itemFoto, uuidPonto, 'da galeria');
+      Inc(k);
     end;
-
-    ForceDirectories(ExpandFileName('./uploads'));
-    StringStream := nil;
-    try
-      for i := 0 to arrayGaleria.Count - 1 do
-      begin
-        itemGaleria := arrayGaleria.Objects[i];
-        nome_arquivo := itemGaleria.Get('nome_arquivo', '');
-        itemFoto     := itemGaleria.Get('itemFoto', '');
-
-        if (nome_arquivo = '') or (itemFoto = '') then Continue;
-
-        if not GerarNomeArquivoSeguro(nome_arquivo, uuidString, nome_seguro) then
-          raise EImagemInvalida.Create('Extensão de imagem não permitida.');
-
-        DecodedStr := DecodeStringBase64(itemFoto);
-        if Length(DecodedStr) > MAX_IMAGEM_BYTES then
-          raise EImagemInvalida.Create('Imagem muito grande.');
-
-        caminho_salvar := ExpandFileName('./uploads/' + nome_seguro);
-        url_banco      := '/imagens/' + nome_seguro;
-
-        StringStream := TStringStream.Create(DecodedStr);
-        StringStream.SaveToFile(caminho_salvar);
-        FreeAndNil(StringStream);
-
-        TGetData.getData(
-          'insert into ponto_turistico_galeria(id_ponto, url_foto, ordem) ' +
-          'values(:id_ponto, :url_foto, :ordem);',
-          [idPonto, url_banco, ordemBase + i]
-        );
-      end;
-    finally
-      if Assigned(StringStream) then StringStream.Free;
-    end;
+    SetLength(Result, k);
   finally
     jsonData.Free;
+  end;
+end;
+
+class procedure TPontoTuristicoModel.SalvarArquivoUpload(const nomeSeguro, dados: string);
+var
+  fs: TFileStream;
+begin
+  ForceDirectories(ExpandFileName('./uploads'));
+  fs := TFileStream.Create(ExpandFileName('./uploads/' + nomeSeguro), fmCreate);
+  try
+    if Length(dados) > 0 then
+      fs.WriteBuffer(dados[1], Length(dados));
+  finally
+    fs.Free;
+  end;
+end;
+
+// Converte uma URL '/imagens/arquivo.ext' no caminho físico dentro de ./uploads,
+// garantindo que o resultado NÃO sai dessa pasta.
+class function TPontoTuristicoModel.CaminhoUploadSeguro(const urlFoto: string;
+  out caminho: string): Boolean;
+var
+  pasta, nome: string;
+begin
+  Result := False;
+  caminho := '';
+
+  if Pos('/imagens/', urlFoto) <> 1 then Exit;
+
+  nome := ExtractFileName(Copy(urlFoto, Length('/imagens/') + 1, MaxInt));
+  if (nome = '') or (nome = '.') or (nome = '..') then Exit;
+
+  pasta   := IncludeTrailingPathDelimiter(ExpandFileName('./uploads'));
+  caminho := ExpandFileName(pasta + nome);
+
+  Result := Pos(pasta, caminho) = 1;
+end;
+
+// Grava em disco e insere a linha de cada foto JÁ VALIDADA, mantendo a ordem
+// recebida (soma à ordem que já existir, pra suportar "adicionar mais fotos"
+// em cima de um ponto já existente).
+class procedure TPontoTuristicoModel.SalvarItensGaleria(const itens: TImagensPreparadas;
+  idPonto: integer);
+var
+  dataset: TDataSet;
+  i, ordemBase: integer;
+begin
+  if Length(itens) = 0 then Exit;
+
+  dataset := nil;
+  ordemBase := 0;
+  try
+    dataset := TGetData.getData(
+      'SELECT COALESCE(MAX(ordem), -1) AS max_ordem FROM ponto_turistico_galeria ' +
+      'WHERE id_ponto = :idPonto;',
+      [idPonto],
+      True
+    );
+    if Assigned(dataset) and not dataset.IsEmpty then
+      ordemBase := dataset.FieldByName('max_ordem').AsInteger + 1;
+  finally
+    dataset.Free;
+  end;
+
+  for i := 0 to High(itens) do
+  begin
+    SalvarArquivoUpload(itens[i].nomeSeguro, itens[i].dados);
+
+    TGetData.getData(
+      'insert into ponto_turistico_galeria(id_ponto, url_foto, ordem) ' +
+      'values(:id_ponto, :url_foto, :ordem);',
+      [idPonto, '/imagens/' + itens[i].nomeSeguro, ordemBase + i]
+    );
   end;
 end;
 
@@ -237,49 +354,58 @@ class function TPontoTuristicoModel.CriarPonto(dados: TPontoTuristicoData): stri
 var
   dataSet: TDataSet;
   uuid: TGuid;
-  uuidString, url_banco_capa, DecodedStrCapa, caminho_salvar_capa, nome_seguro: string;
+  uuidString, url_banco_capa, caminho_capa: string;
   idPonto: integer;
-  StringStream: TStringStream;
+  latV, lngV: Double;
+  temCapa, capaSalva: Boolean;
+  capaPreparada: TImagemPreparada;
+  galeriaPreparada: TImagensPreparadas;
 begin
   dataSet := nil;
-  StringStream := nil;
   url_banco_capa := '';
+  caminho_capa := '';
+  idPonto := 0;
+  capaSalva := False;
   try
+    if not (TryParseCoord(dados.latitude,  -90,  90,  latV) and
+            TryParseCoord(dados.longitude, -180, 180, lngV)) then
+      raise Exception.Create('Coordenadas inválidas.');
+
+    CreateGUID(uuid);
+    uuidString := StringReplace(StringReplace(GUIDToString(uuid),
+                    '{', '', [rfReplaceAll]), '}', '', [rfReplaceAll]);
+
+    // 1) VALIDA TUDO ANTES de gravar qualquer coisa (banco ou disco).
+    //    Se alguma imagem for inválida, EImagemInvalida sobe e nada foi criado.
+    temCapa := (dados.nome_arquivo_capa <> '') and (dados.capa <> '');
+    if temCapa then
+      capaPreparada := PrepararImagem(dados.nome_arquivo_capa, dados.capa, uuidString, 'da capa');
+
+    galeriaPreparada := PrepararGaleria(dados.galeria, uuidString);
+
+    // 2) slug único gerado no servidor
+    dados.slug := GerarSlugUnico(IfThen(dados.slug <> '', dados.slug, dados.nome));
+
+    // 3) a capa usa o uuid recém-gerado no nome do arquivo — não depende
+    //    do id numérico, então dá pra salvar o arquivo antes do insert
+    if temCapa then
+    begin
+      SalvarArquivoUpload(capaPreparada.nomeSeguro, capaPreparada.dados);
+      capaSalva      := True;
+      url_banco_capa := '/imagens/' + capaPreparada.nomeSeguro;
+      caminho_capa   := ExpandFileName('./uploads/' + capaPreparada.nomeSeguro);
+    end;
+
     try
-      CreateGUID(uuid);
-      uuidString := StringReplace(StringReplace(GUIDToString(uuid),
-                      '{', '', [rfReplaceAll]), '}', '', [rfReplaceAll]);
-
-      // a capa usa o uuid recém-gerado no nome do arquivo — não depende
-      // do id numérico, então dá pra salvar o arquivo antes do insert
-      // (mesmo esquema usado pro avatar/capa do comércio).
-      if (dados.nome_arquivo_capa <> '') and (dados.capa <> '') then
-      begin
-        if not GerarNomeArquivoSeguro(dados.nome_arquivo_capa, uuidString, nome_seguro) then
-          raise EImagemInvalida.Create('Extensão de imagem da capa não permitida.');
-
-        DecodedStrCapa := DecodeStringBase64(dados.capa);
-        if Length(DecodedStrCapa) > MAX_IMAGEM_BYTES then
-          raise EImagemInvalida.Create('Imagem da capa muito grande.');
-
-        caminho_salvar_capa := ExpandFileName('./uploads/' + nome_seguro);
-        url_banco_capa      := '/imagens/' + nome_seguro;
-
-        ForceDirectories(ExpandFileName('./uploads'));
-        StringStream := TStringStream.Create(DecodedStrCapa);
-        StringStream.SaveToFile(caminho_salvar_capa);
-        FreeAndNil(StringStream);
-      end;
-
-      dados.slug := GerarSlugUnico(IfThen(dados.slug <> '', dados.slug, dados.nome));
-
+      // ATIVO entra explícito como TRUE (ponto já aparece nas rotas públicas).
+      // Se preferir moderação, troque o TRUE do SQL por FALSE.
       dataSet := TGetData.getData(
         'insert into ponto_turistico(uuid, id_vendedor, id_categoria, nome, slug, ' +
         'resumo, historia, latitude, longitude, endereco, numero, bairro, cidade, ' +
-        'uf, cep, capa) ' +
+        'uf, cep, capa, ativo) ' +
         'values(:uuid, (select id from vendedor where uuid = :idVendedor), :idCategoria, ' +
         ':nome, :slug, :resumo, :historia, :latitude, :longitude, :endereco, :numero, ' +
-        ':bairro, :cidade, :uf, :cep, :capa) ' +
+        ':bairro, :cidade, :uf, :cep, :capa, TRUE) ' +
         'returning id;',
         [
           uuidString,
@@ -289,8 +415,8 @@ begin
           dados.slug,
           dados.resumo,
           dados.historia,
-          StrToFloat(StringReplace(dados.latitude,  ',', '.', [])),
-          StrToFloat(StringReplace(dados.longitude, ',', '.', [])),
+          latV,
+          lngV,
           dados.endereco,
           dados.numero,
           dados.bairro,
@@ -304,12 +430,25 @@ begin
 
       idPonto := dataSet.Fields[0].AsInteger;
 
-      SalvarItensGaleria(uuidString, dados.galeria, idPonto);
-
-      Result := uuidString;
+      SalvarItensGaleria(galeriaPreparada, idPonto);
     except
+      // falhou depois de começar a gravar: desfaz o que der pra não deixar
+      // um ponto pela metade (o front recebe erro e pode tentar de novo)
+      if idPonto > 0 then
+      begin
+        try
+          TGetData.getData('DELETE FROM ponto_turistico_galeria WHERE id_ponto = :id;', [idPonto]);
+          TGetData.getData('DELETE FROM ponto_turistico WHERE id = :id;', [idPonto]);
+        except
+          // melhor esforço
+        end;
+      end;
+      if capaSalva and (caminho_capa <> '') and FileExists(caminho_capa) then
+        DeleteFile(caminho_capa);
       raise;
     end;
+
+    Result := uuidString;
   finally
     dataset.Free;
   end;
@@ -367,12 +506,14 @@ class function TPontoTuristicoModel.AtualizarPonto(uuidPonto: string; dados: TPo
 var
   dataSet: TDataSet;
   idPonto: integer;
-  uuidString, url_banco_capa, DecodedStrCapa, caminho_salvar_capa, nome_seguro: string;
-  StringStream: TStringStream;
+  uuidString, url_banco_capa: string;
+  latV, lngV: Double;
+  temCapa: Boolean;
+  capaPreparada: TImagemPreparada;
+  galeriaPreparada: TImagensPreparadas;
 begin
   Result := False;
   dataset := nil;
-  StringStream := nil;
   try
     dataset := TGetData.getData(
       'SELECT id, uuid FROM ponto_turistico WHERE uuid = :uuidPonto;',
@@ -384,6 +525,19 @@ begin
     idPonto    := dataset.FieldByName('id'  ).AsInteger;
     uuidString := dataset.FieldByName('uuid').AsString;
 
+    if not (TryParseCoord(dados.latitude,  -90,  90,  latV) and
+            TryParseCoord(dados.longitude, -180, 180, lngV)) then
+      raise Exception.Create('Coordenadas inválidas.');
+
+    // VALIDA TUDO (capa e galeria) ANTES do UPDATE: se algo for inválido,
+    // EImagemInvalida sobe e o ponto não é alterado pela metade.
+    temCapa := (dados.nome_arquivo_capa <> '') and (dados.capa <> '');
+    if temCapa then
+      capaPreparada := PrepararImagem(dados.nome_arquivo_capa, dados.capa, uuidString, 'da capa');
+
+    galeriaPreparada := PrepararGaleria(dados.galeria, uuidString);
+
+    // o slug NÃO é alterado na edição (mantém links já compartilhados)
     TGetData.getData(
       'update ponto_turistico set nome = :nome, resumo = :resumo, ' +
       'historia = :historia, latitude = :latitude, longitude = :longitude, ' +
@@ -394,8 +548,8 @@ begin
         dados.nome,
         dados.resumo,
         dados.historia,
-        StrToFloat(StringReplace(dados.latitude,  ',', '.', [])),
-        StrToFloat(StringReplace(dados.longitude, ',', '.', [])),
+        latV,
+        lngV,
         dados.endereco,
         dados.numero,
         dados.bairro,
@@ -408,22 +562,10 @@ begin
     );
 
     // capa nova é opcional — só troca se vier arquivo no request
-    if (dados.nome_arquivo_capa <> '') and (dados.capa <> '') then
+    if temCapa then
     begin
-      if not GerarNomeArquivoSeguro(dados.nome_arquivo_capa, uuidString, nome_seguro) then
-        raise EImagemInvalida.Create('Extensão de imagem da capa não permitida.');
-
-      DecodedStrCapa := DecodeStringBase64(dados.capa);
-      if Length(DecodedStrCapa) > MAX_IMAGEM_BYTES then
-        raise EImagemInvalida.Create('Imagem da capa muito grande.');
-
-      caminho_salvar_capa := ExpandFileName('./uploads/' + nome_seguro);
-      url_banco_capa      := '/imagens/' + nome_seguro;
-
-      ForceDirectories(ExpandFileName('./uploads'));
-      StringStream := TStringStream.Create(DecodedStrCapa);
-      StringStream.SaveToFile(caminho_salvar_capa);
-      FreeAndNil(StringStream);
+      SalvarArquivoUpload(capaPreparada.nomeSeguro, capaPreparada.dados);
+      url_banco_capa := '/imagens/' + capaPreparada.nomeSeguro;
 
       TGetData.getData(
         'update ponto_turistico set capa = :capa where id = :id;',
@@ -432,16 +574,13 @@ begin
     end;
 
     // fotos novas de galeria são adicionadas às existentes (não substitui)
-    SalvarItensGaleria(uuidString, dados.galeria, idPonto);
+    SalvarItensGaleria(galeriaPreparada, idPonto);
 
     Result := True;
   finally
-    if Assigned(StringStream) then StringStream.Free;
     dataset.Free;
   end;
 end;
-
-{ ---------- público ---------- }
 
 class function TPontoTuristicoModel.DefinirAtivo(uuid: string; ativo: Boolean): Boolean;
 begin
@@ -476,16 +615,16 @@ begin
 
     url_foto := dataset.FieldByName('url_foto').AsString;
 
-    // Apaga do banco
+    // Apaga do banco (repete a checagem de dono no próprio DELETE)
     TGetData.getData(
-      'DELETE FROM ponto_turistico_galeria WHERE id = :idFoto;',
-      [idFoto]
+      'DELETE FROM ponto_turistico_galeria ' +
+      'WHERE id = :idFoto AND id_ponto = (SELECT id FROM ponto_turistico WHERE uuid = :uuid);',
+      [idFoto, uuidPonto]
     );
 
-    // Apaga do disco (se for uma imagem local)
-    if Pos('/imagens/', url_foto) = 1 then
+    // Apaga do disco só se o caminho resolvido ficar dentro de ./uploads
+    if CaminhoUploadSeguro(url_foto, caminho_arquivo) then
     begin
-      caminho_arquivo := ExpandFileName('./uploads/' + StringReplace(url_foto, '/imagens/', '', []));
       if FileExists(caminho_arquivo) then
         DeleteFile(caminho_arquivo);
     end;
@@ -495,6 +634,8 @@ begin
     dataset.Free;
   end;
 end;
+
+{ ---------- público ---------- }
 
 class function TPontoTuristicoModel.GetBySlug(slug: string): TJSONObject;
 var
@@ -563,8 +704,10 @@ begin
     lat := dsPonto.FieldByName('latitude' ).AsFloat;
     lng := dsPonto.FieldByName('longitude').AsFloat;
 
-    // WITH calcula a distância uma vez; o raio efetivo de cada comércio
-    // cresce com o PLANO_DESTAQUE dele (0 = plano free = só o raio base).
+    // BASE calcula o cosseno da distância uma vez; DIST limita esse valor a
+    // [-1, 1] antes do ACOS (evita erro aritmético com coordenadas idênticas).
+    // O raio efetivo de cada comércio cresce com o PLANO_DESTAQUE dele
+    // (0 = plano free = só o raio base).
     // Atenção: os placeholders abaixo são posicionais na ORDEM em que
     // aparecem no texto (o getData faz bind por índice, não por nome),
     // então :lat/:lng repetidos exigem o valor repetido no array também.
@@ -637,10 +780,12 @@ begin
 
     if (not Assigned(dsPonto)) or dsPonto.IsEmpty then Exit;
 
-    lat := StrToFloatDef(dsPonto.FieldByName('latitude').AsString, 0);
-    lng := StrToFloatDef(dsPonto.FieldByName('longitude').AsString, 0);
+    // AsFloat (e não AsString + StrToFloatDef): não depende do separador decimal do sistema
+    lat := dsPonto.FieldByName('latitude').AsFloat;
+    lng := dsPonto.FieldByName('longitude').AsFloat;
 
-    // Busca outros pontos em um raio de até 50km
+    // Busca outros pontos em um raio de até 50km.
+    // No Firebird o "*" precisa vir qualificado (BASE.*) quando há outras colunas no SELECT.
     dataset := TGetData.getData(
       'WITH BASE AS (' +
       '  SELECT p.uuid, p.nome, p.slug, p.resumo, p.capa, c.nome AS categoria, ' +
@@ -652,9 +797,9 @@ begin
       '  WHERE p.slug <> :slug_origem AND p.ativo = TRUE ' +
       '    AND p.latitude IS NOT NULL AND p.longitude IS NOT NULL' +
       '), DIST AS (' +
-      '  SELECT *, 6371 * ACOS(CASE WHEN cos_d > 1.0 THEN 1.0 ' +
-      '                             WHEN cos_d < -1.0 THEN -1.0 ' +
-      '                             ELSE cos_d END) AS distancia_km ' +
+      '  SELECT BASE.*, 6371 * ACOS(CASE WHEN cos_d > 1.0 THEN 1.0 ' +
+      '                                  WHEN cos_d < -1.0 THEN -1.0 ' +
+      '                                  ELSE cos_d END) AS distancia_km ' +
       '  FROM BASE' +
       ') ' +
       'SELECT * FROM DIST WHERE distancia_km <= 50 ORDER BY distancia_km ASC ROWS :limite;',
@@ -690,6 +835,7 @@ begin
   Result := TJSONArray.Create;
   dataset := nil;
   try
+    // No Firebird o "*" precisa vir qualificado (BASE.*) quando há outras colunas no SELECT.
     dataset := TGetData.getData(
       'WITH BASE AS (' +
       '  SELECT p.uuid, p.nome, p.slug, p.resumo, p.capa, c.nome AS categoria, ' +
@@ -700,9 +846,9 @@ begin
       '  JOIN categoria_ponto_turistico c ON c.id = p.id_categoria ' +
       '  WHERE p.ativo = TRUE AND p.latitude IS NOT NULL AND p.longitude IS NOT NULL' +
       '), DIST AS (' +
-      '  SELECT *, 6371 * ACOS(CASE WHEN cos_d > 1.0 THEN 1.0 ' +
-      '                             WHEN cos_d < -1.0 THEN -1.0 ' +
-      '                             ELSE cos_d END) AS distancia_km ' +
+      '  SELECT BASE.*, 6371 * ACOS(CASE WHEN cos_d > 1.0 THEN 1.0 ' +
+      '                                  WHEN cos_d < -1.0 THEN -1.0 ' +
+      '                                  ELSE cos_d END) AS distancia_km ' +
       '  FROM BASE' +
       ') ' +
       'SELECT * FROM DIST WHERE distancia_km <= :raio ORDER BY distancia_km ASC ROWS :limite;',
@@ -787,6 +933,7 @@ var
   ext: string;
   g: TGuid;
 begin
+  NomeFinal := '';
   ext := LowerCase(ExtractFileExt(ExtractFileName(NomeOriginal)));
   Result := (ext = '.jpg') or (ext = '.jpeg') or (ext = '.png') or (ext = '.webp');
   if not Result then Exit;
@@ -800,10 +947,19 @@ class function TPontoTuristicoModel.GerarSlugUnico(const Base, UuidIgnorar: stri
 var
   ds: TDataSet;
   n: Integer;
-  candidato: string;
+  slugBase, candidato: string;
 begin
+  // limita o tamanho da base para caber na coluna mesmo com o sufixo "-N"
+  slugBase := Slugify(Base);
+  if Length(slugBase) > MAX_SLUG_BASE then
+  begin
+    slugBase := Copy(slugBase, 1, MAX_SLUG_BASE);
+    while (slugBase <> '') and (slugBase[Length(slugBase)] = '-') do
+      Delete(slugBase, Length(slugBase), 1);
+  end;
+
   n := 1;
-  candidato := Slugify(Base);
+  candidato := slugBase;
   repeat
     ds := TGetData.getData(
       'SELECT 1 FROM ponto_turistico WHERE slug = :slug AND uuid <> :uuid',
@@ -816,16 +972,42 @@ begin
       ds.Free;
     end;
     Inc(n);
-    candidato := Slugify(Base) + '-' + IntToStr(n);
+    candidato := slugBase + '-' + IntToStr(n);
   until False;
   Result := candidato;
 end;
 
+// Converte "-23.05" ou "-23,05" em Double, aceitando só valores dentro de [Min, Max].
+// Independe do separador decimal configurado no sistema operacional.
 class function TPontoTuristicoModel.TryParseCoord(const S: string;
   Min, Max: Double; out V: Double): Boolean;
+var
+  T: string;
+  fs: TFormatSettings;
+  i: Integer;
 begin
-  Result := TryStrToFloat(StringReplace(Trim(S), ',', '.', []), V, DefaultFormatSettings)
-            and (V >= Min) and (V <= Max);
+  Result := False;
+  V := 0;
+
+  T := Trim(S);
+  if T = '' then Exit;
+
+  // só dígitos, sinal e separador decimal — barra "nan", "inf" e notação
+  // científica ("1e5"), que fariam a comparação com Min/Max levantar exceção
+  for i := 1 to Length(T) do
+    if not (T[i] in ['0'..'9', '.', ',', '-', '+']) then Exit;
+
+  // rejeita "1.234,56", "1,2,3" etc.: no máximo um separador decimal
+  if (Pos(',', T) > 0) and (Pos('.', T) > 0) then Exit;
+  if Length(T) - Length(StringReplace(T, ',', '', [rfReplaceAll])) > 1 then Exit;
+
+  T := StringReplace(T, ',', '.', []);
+
+  fs := DefaultFormatSettings;
+  fs.DecimalSeparator := '.';
+
+  Result := TryStrToFloat(T, V, fs) and (V >= Min) and (V <= Max);
+  if not Result then V := 0;
 end;
 
 end.
