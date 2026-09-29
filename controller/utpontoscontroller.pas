@@ -64,6 +64,8 @@ begin
 end;
 
 procedure PreencherDadosDoBody(RequestJson: TJSONObject; out dados: TPontoTuristicoData);
+var
+  g: TJSONData;
 begin
   with dados do
   begin
@@ -83,17 +85,26 @@ begin
 
     nome_arquivo_capa := TSecurityService.SanitizeInput(Trim(RequestJson.Get('nome_arquivo_capa', '')));
     capa              := RequestJson.Get('capa', ''); // base64, sem sanitizar (binário)
-    galeria           := RequestJson.Get('galeria', ''); // JSON string: [{nome_arquivo, itemFoto}, ...]
 
-    dados.id_categoria := RequestJson.Get('id_categoria', 0);
+    g := RequestJson.Find('galeria');
+    if Assigned(g) and (g.JSONType = jtArray) then
+      galeria := g.AsJSON
+    else if Assigned(g) and (g.JSONType = jtString) then
+      galeria := g.AsString
+    else
+      galeria := '';
+
+    id_categoria := RequestJson.Get('id_categoria', 0);
   end;
 end;
 
 procedure HandlerCriarPonto(Req: THorseRequest; Res: THorseResponse; next: TNextProc);
 var
   RequestJson: TJSONObject;
+  jsonData: TJSONData;
   dados: TPontoTuristicoData;
   idVendedor, uuidPonto: string;
+  latV, lngV: Double;
 begin
   RequestJson := nil;
   try
@@ -106,7 +117,15 @@ begin
         Exit;
       end;
 
-      RequestJson := TJSONObject(GetJSON(Req.Body));
+      jsonData := GetJSON(Req.Body);
+      if jsonData.JSONType <> jtObject then
+      begin
+        jsonData.Free;
+        TJsonView.SendError(Res, 400, 'Corpo da requisição inválido.');
+        Exit;
+      end;
+      RequestJson := TJSONObject(jsonData);
+
       PreencherDadosDoBody(RequestJson, dados);
       dados.idVendedor := idVendedor;
 
@@ -122,11 +141,22 @@ begin
         Exit;
       end;
 
+      if not (TPontoTuristicoModel.TryParseCoord(dados.latitude,  -90,  90,  latV) and
+              TPontoTuristicoModel.TryParseCoord(dados.longitude, -180, 180, lngV)) then
+      begin
+        TJsonView.SendError(Res, 400, 'Latitude/longitude inválidas.');
+        Exit;
+      end;
+
       uuidPonto := TPontoTuristicoModel.CriarPonto(dados);
 
       TJsonView.SendResponse(Res,
         TJSONObject(GetJSON('{"uuid":"' + uuidPonto + '"}')), 201);
-    except on e: Exception do
+    except on e: EImagemInvalida do
+      begin
+        TJsonView.SendError(Res, 400, 'Imagem inválida ou muito grande.');
+      end;
+    on e: Exception do
       begin
         WriteLn('Erro em: HandlerCriarPonto - ' + e.Message);
         TJsonView.SendError(Res, 500, 'Erro interno.');
@@ -196,8 +226,10 @@ end;
 procedure HandlerAtualizarPonto(Req: THorseRequest; Res: THorseResponse; next: TNextProc);
 var
   RequestJson: TJSONObject;
+  jsonData: TJSONData;
   dados: TPontoTuristicoData;
   idVendedor, uuidPonto: string;
+  latV, lngV: Double;
 begin
   RequestJson := nil;
   try
@@ -212,13 +244,28 @@ begin
         Exit;
       end;
 
-      RequestJson := TJSONObject(GetJSON(Req.Body));
+      jsonData := GetJSON(Req.Body);
+      if jsonData.JSONType <> jtObject then
+      begin
+        jsonData.Free;
+        TJsonView.SendError(Res, 400, 'Corpo da requisição inválido.');
+        Exit;
+      end;
+      RequestJson := TJSONObject(jsonData);
+
       PreencherDadosDoBody(RequestJson, dados);
       dados.idVendedor := idVendedor;
 
       if dados.id_categoria <= 0 then
       begin
         TJsonView.SendError(Res, 400, 'Categoria é obrigatória.');
+        Exit;
+      end;
+
+      if not (TPontoTuristicoModel.TryParseCoord(dados.latitude,  -90,  90,  latV) and
+              TPontoTuristicoModel.TryParseCoord(dados.longitude, -180, 180, lngV)) then
+      begin
+        TJsonView.SendError(Res, 400, 'Latitude/longitude inválidas.');
         Exit;
       end;
 
@@ -229,7 +276,11 @@ begin
       end;
 
       TJsonView.SendSuccess(Res, 'Ponto turístico atualizado com sucesso.');
-    except on e: Exception do
+    except on e: EImagemInvalida do
+      begin
+        TJsonView.SendError(Res, 400, 'Imagem inválida ou muito grande.');
+      end;
+    on e: Exception do
       begin
         WriteLn('Erro em: HandlerAtualizarPonto - ' + e.Message);
         TJsonView.SendError(Res, 500, 'Erro interno.');
@@ -406,21 +457,106 @@ end;
 procedure HandlerListarCategorias(req: THorseRequest; res: THorseResponse);
 var
   arrayItens: TJSONArray;
+  jsonRes: TJSONObject;
 begin
   arrayItens := nil;
+  jsonRes := nil;
+  try
+    arrayItens := TPontoTuristicoModel.ListarCategorias;
+    jsonRes := TJSONObject.Create;
+    jsonRes.Add('itens', arrayItens);      // jsonRes assume a posse do array
+    TJsonView.SendResponseJsonObject(Res, jsonRes, 200);
+  except on e: Exception do
+    begin
+      if Assigned(jsonRes) then FreeAndNil(jsonRes)
+      else if Assigned(arrayItens) then FreeAndNil(arrayItens);
+      WriteLn('Erro em HandlerListarCategorias: ' + e.Message);
+      TJsonView.SendError(Res, 500, 'Erro interno.');
+    end;
+  end;
+end;
+
+procedure HandlerDefinirAtivo(Req: THorseRequest; Res: THorseResponse; next: TNextProc);
+var
+  idVendedor, uuidPonto: string;
+  RequestJson: TJSONObject;
+  jsonData: TJSONData;
+  ativo: Boolean;
+begin
+  RequestJson := nil;
   try
     try
-      arrayItens := TPontoTuristicoModel.ListarCategorias;
+      uuidPonto := Req.Params['uuid'];
 
-      TJsonView.SendT(Res, arrayItens.AsJSON);
+      if not ExigirDonoDoPonto(Req, Res, uuidPonto, idVendedor) then Exit;
+
+      if Trim(Req.Body) = '' then
+      begin
+        TJsonView.SendError(Res, 400, 'Corpo da requisição está vazio.');
+        Exit;
+      end;
+
+      jsonData := GetJSON(Req.Body);
+      if jsonData.JSONType <> jtObject then
+      begin
+        jsonData.Free;
+        TJsonView.SendError(Res, 400, 'Corpo da requisição inválido.');
+        Exit;
+      end;
+      RequestJson := TJSONObject(jsonData);
+
+      jsonData := RequestJson.Find('ativo');
+      if (not Assigned(jsonData)) or (jsonData.JSONType <> jtBoolean) then
+      begin
+        TJsonView.SendError(Res, 400, 'Campo "ativo" (boolean) é obrigatório.');
+        Exit;
+      end;
+
+      ativo := jsonData.AsBoolean;
+
+      if TPontoTuristicoModel.DefinirAtivo(uuidPonto, ativo) then
+        TJsonView.SendSuccess(Res, 'Status atualizado.')
+      else
+        TJsonView.SendError(Res, 500, 'Erro ao atualizar status.');
+
     except on e: Exception do
       begin
-        WriteLn('Erro em HandlerPontosPorGPS: ' + e.Message);
+        WriteLn('Erro em: HandlerDefinirAtivo - ' + e.Message);
         TJsonView.SendError(Res, 500, 'Erro interno.');
       end;
     end;
   finally
-    FreeAndNil(arrayItens);
+    if Assigned(RequestJson) then RequestJson.Free;
+  end;
+end;
+
+procedure HandlerRemoverFotoGaleria(Req: THorseRequest; Res: THorseResponse; next: TNextProc);
+var
+  idVendedor, uuidPonto: string;
+  idFoto: integer;
+begin
+  try
+    uuidPonto := Req.Params['uuid'];
+    idFoto    := StrToIntDef(Req.Params['idFoto'], 0);
+
+    if not ExigirDonoDoPonto(Req, Res, uuidPonto, idVendedor) then Exit;
+
+    if idFoto <= 0 then
+    begin
+      TJsonView.SendError(Res, 400, 'ID da foto inválido.');
+      Exit;
+    end;
+
+    if TPontoTuristicoModel.RemoverFotoGaleria(uuidPonto, idFoto) then
+      TJsonView.SendSuccess(Res, 'Foto removida.')
+    else
+      TJsonView.SendError(Res, 404, 'Foto não encontrada ou não pertence a este ponto.');
+
+  except on e: Exception do
+    begin
+      WriteLn('Erro em: HandlerRemoverFotoGaleria - ' + e.Message);
+      TJsonView.SendError(Res, 500, 'Erro interno.');
+    end;
   end;
 end;
 
@@ -437,6 +573,12 @@ begin
 
   THorse.AddCallback(HorseJWT(TConfig.Token))
   .Put('api/v1/vendedor/ponto-turistico/:uuid', HandlerAtualizarPonto);
+
+  THorse.AddCallback(HorseJWT(TConfig.Token))
+  .Patch('api/v1/vendedor/ponto-turistico/:uuid/ativo', HandlerDefinirAtivo);
+
+  THorse.AddCallback(HorseJWT(TConfig.Token))
+  .Delete('api/v1/vendedor/ponto-turistico/:uuid/galeria/:idFoto', HandlerRemoverFotoGaleria);
 
   // --- Público (sem JWT) ---
   THorse.Get('api/v1/ponto/:slug', HandlerGetPontoPublico);

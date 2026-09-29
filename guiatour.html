@@ -491,11 +491,15 @@
     ];
 
     // Inicialização da Página
-    document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", async () => {
       carregarPontoTuristico(MOCK_PONTO);
       iniciarCarrossel(MOCK_CAROUSEL_SPOTS);
-      carregarComercios(MOCK_COMERCIOS);
-      inicializarMapa(MOCK_PONTO, MOCK_COMERCIOS);
+      
+      const comercios = await buscarComerciosProximos(MOCK_PONTO.slug);
+      const listaParaExibir = comercios.length > 0 ? comercios : MOCK_COMERCIOS;
+      
+      carregarComercios(listaParaExibir);
+      inicializarMapa(MOCK_PONTO, listaParaExibir);
       configurarBuscaManual();
     });
 
@@ -659,6 +663,28 @@
     }
 
     // Pesquisa Manual
+    function slugify(text) {
+      return text.toString().toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
+        .replace(/[^\w\s-]/g, '') // remove caracteres não alfanuméricos
+        .replace(/\s+/g, '-') // troca espaços por -
+        .replace(/--+/g, '-') // remove múltiplos -
+        .trim();
+    }
+
+    async function buscarComerciosProximos(slug) {
+      try {
+        const res = await fetch(`/api/v1/ponto/${slug}/comercios-proximos`);
+        if (res.ok) {
+          const data = await res.json();
+          return data.itens || [];
+        }
+      } catch (e) {
+        console.warn("Falha ao buscar comércios próximos:", e);
+      }
+      return [];
+    }
+
     function configurarBuscaManual() {
       const input = document.getElementById("inputLocal");
       input.addEventListener("keydown", async (e) => {
@@ -666,13 +692,18 @@
           const query = input.value.trim();
           input.blur();
           
+          const slug = slugify(query);
+
           // Integração com a busca de pontos / slug
           try {
-            const res = await fetch(`/api/v1/ponto/${encodeURIComponent(query.toLowerCase())}`);
+            const res = await fetch(`/api/v1/ponto/${slug}`);
             if (res.ok) {
               const pontoData = await res.json();
               carregarPontoTuristico(pontoData);
-              inicializarMapa(pontoData, MOCK_COMERCIOS);
+              
+              const comercios = await buscarComerciosProximos(slug);
+              carregarComercios(comercios);
+              inicializarMapa(pontoData, comercios);
             } else {
               alert("Nenhum atrativo encontrado com esse nome.");
             }
