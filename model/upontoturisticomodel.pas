@@ -46,6 +46,7 @@ type
     class function GetComerciosProximos(slug: string): TJSONArray;
     class function GetPontosProximos(slug: string; limite: integer = 6): TJSONArray;
     class function GetPontosPorGPS(lat, lng: Double; raioKm: Double = 30; limite: integer = 10): TJSONArray;
+    class function ListarCategorias: TJSONArray;
   private
     class function MontarGaleriaJson(idPonto: integer): TJSONArray;
     class procedure SalvarItensGaleria(const uuidString, galeriaJson: string; idPonto: integer);
@@ -636,6 +637,51 @@ begin
     end;
   finally
     if Assigned(dataset) then dataset.Free;
+  end;
+end;
+
+class function TPontoTuristicoModel.ListarCategorias: TJSONArray;
+var
+  dataSet: TDataSet;
+  jsonItem: TJSONObject;
+  arrayItens: TJSONArray;
+begin
+  dataSet := nil;
+  arrayItens := nil;
+  try
+    try
+      Result := TJSONArray.Create;
+
+      dataSet := TGetData.getData(
+        'select id, nome from categoria_ponto_turistico;',
+        [],
+        True
+      );
+
+      if not dataSet.IsEmpty then
+      begin
+        with dataSet do
+        begin
+          first;
+          while not eof do
+          begin
+            jsonItem := TJSONObject.Create;
+
+            jsonItem.Add('id_categoria', FieldByName('id').AsInteger);
+            jsonItem.Add('nome', FieldByName('nome').AsInteger);
+
+            arrayItens.Add(jsonItem);
+            next;
+          end;
+        end;
+      end;
+    except
+      begin
+        raise;
+      end;
+    end;
+  finally
+    FreeAndNil(dataSet);
   end;
 end;
 

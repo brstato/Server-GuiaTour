@@ -21,6 +21,7 @@ type
     class procedure SendError(Res: THorseResponse; const AStatusCode: Integer; const AMessage: string);
     class procedure SendHtml(Res: THorseResponse; const AStatusCode: Integer; const AHtml: string);
     class procedure SendText(Res: THorseResponse; const AStatusCode: Integer; const Str: string);
+    class procedure SendT(Res: THorseResponse; const Str: string; AStatusCode: integer = 200);
   end;
 
 implementation
@@ -86,6 +87,12 @@ class procedure TJsonView.SendText(Res: THorseResponse;
   const AStatusCode: Integer; const Str: string);
 begin
   Res.Status(AStatusCode).ContentType('text/plain; charset=utf-8')
+     .Send(Str);
+end;
+
+class procedure TJsonView.SendT(Res: THorseResponse; const Str: string; AStatusCode: integer = 200);
+begin
+  Res.Status(AStatusCode).ContentType('application/json; charset=utf-8')
      .Send(Str);
 end;
 

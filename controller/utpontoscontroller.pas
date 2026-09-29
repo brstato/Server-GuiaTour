@@ -403,6 +403,27 @@ begin
   end;
 end;
 
+procedure HandlerListarCategorias(req: THorseRequest; res: THorseResponse);
+var
+  arrayItens: TJSONArray;
+begin
+  arrayItens := nil;
+  try
+    try
+      arrayItens := TPontoTuristicoModel.ListarCategorias;
+
+      TJsonView.SendT(Res, arrayItens.AsJSON);
+    except on e: Exception do
+      begin
+        WriteLn('Erro em HandlerPontosPorGPS: ' + e.Message);
+        TJsonView.SendError(Res, 500, 'Erro interno.');
+      end;
+    end;
+  finally
+    FreeAndNil(arrayItens);
+  end;
+end;
+
 class procedure TPontoTuristicoController.RegisterRoutes();
 begin
   THorse.AddCallback(HorseJWT(TConfig.Token))
@@ -423,6 +444,7 @@ begin
   THorse.Get('api/v1/ponto/:slug/proximos', HandlerPontosProximos);
   THorse.Get('api/v1/visitante/contexto', HandlerContextoVisitante);
   THorse.Get('api/v1/explorar/pontos', HandlerPontosPorGPS);
+  THorse.Get('api/v1/explorar/categorias', HandlerListarCategorias);
 end;
 
 end.
