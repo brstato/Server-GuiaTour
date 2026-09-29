@@ -173,15 +173,17 @@ begin
         titulo          := TSecurityService.SanitizeInput(Trim(RequestJson.Get('titulo',           '')));
         subtitulo       := TSecurityService.SanitizeInput(Trim(RequestJson.Get('subtitulo',        '')));
         bio             := TSecurityService.SanitizeInput(Trim(RequestJson.Get('bio',              '')));
+        latitude        := TSecurityService.SanitizeInput(Trim(RequestJson.Get('latitude',         '')));
+        longitude       := TSecurityService.SanitizeInput(Trim(RequestJson.Get('longitude',        '')));
 
         nome_arquivo_foto_avatar := TSecurityService.SanitizeInput(Trim(RequestJson.Get('nome_arquivo_foto_avatar','')));
         nome_arquivo_foto_bio    := TSecurityService.SanitizeInput(Trim(RequestJson.Get('nome_arquivo_foto_bio',   '')));
         nome_arquivo_foto_capa   := TSecurityService.SanitizeInput(Trim(RequestJson.Get('nome_arquivo_foto_capa',  '')));
 
-        foto_bio        := RequestJson.Get('foto_bio',  '');
-        avatar          := RequestJson.Get('avatar',    '');
-        foto_capa       := RequestJson.Get('foto_capa', '');
-        trabalhos       := RequestJson.Get('trabalhos', '');
+        foto_bio  := RequestJson.Get('foto_bio',  '');
+        avatar    := RequestJson.Get('avatar',    '');
+        foto_capa := RequestJson.Get('foto_capa', '');
+        trabalhos := RequestJson.Get('trabalhos', '');
 
         vendorList.id_categoria := RequestJson.Get('id_categoria', 0);
       end;

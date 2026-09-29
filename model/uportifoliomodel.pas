@@ -179,7 +179,7 @@ begin
             'L.TELEFONE AS WHATSAPP, L.ENDERECO, L.NUMERO, L.BAIRRO, '+
             'L.COMPLEMENTO, L.HORARIOS, L.CIDADE, L.UF, L.CEP, '+
             'L.VALIDADE, L.META_PIXEL_ID, L.GOOGLE_ANALYTICS_ID, L.INSTA, '+
-            'L.SLUG, L.UUID FROM LOJA L '+
+            'L.SLUG, L.UUID, L.LATITUDE, L.LONGITUDE FROM LOJA L '+
 
             'LEFT JOIN SITE S ON S.ID_LOJA_EX = L.UUID WHERE L.SLUG = :Slug;',
             [Slug],
@@ -216,6 +216,8 @@ begin
                  Result.slug       := dataset.FieldByName('SLUG'               ).AsString;
                  Result.foto_capa  := dataset.FieldByName('FOTO_CAPA'          ).AsString;
                  Result.UUid       := dataset.FieldByName('UUID'               ).AsString;
+                 Result.UUid       := dataset.FieldByName('LATITUDE'           ).AsString;
+                 Result.UUid       := dataset.FieldByName('LONGITUDE'          ).AsString;
 
                  Result.RatingValue := '';
                  Result.RatingCount := 0;

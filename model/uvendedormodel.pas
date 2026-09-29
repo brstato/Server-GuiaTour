@@ -34,7 +34,9 @@ Type
     foto_capa,
     nome_arquivo_foto_capa,
     trabalhos: string;
-    id_categoria: integer
+    id_categoria: integer;
+    latitude,
+    longitude: string
   end;
 
 
@@ -136,12 +138,12 @@ begin
           'insert into loja(nome, telefone, email, slug, uuid, id_categoria, ' +
           'validade, id_vendedor, endereco, bairro, cep, cidade, complemento, '+
           'numero, uf, insta, meta_pixel_id, google_ads_id, google_analytics_id, '+
-          'horarios) ' +
+          'horarios, latitude, longitude) ' +
           'values(:nome, :telefone, :email, :slug, :uuid, :idCategoria, ' +
           ':validade, (select id from vendedor where uuid = :idVendedor), '+
           ':endereco, :bairro, :cep, :cidade, :complemento, '+
           ':numero, :uf, :insta, :meta_pixel_id, :google_ads_id, '+
-          ':google_analytics_id, :horarios) '+
+          ':google_analytics_id, :horarios, :latitude, :longitude) '+
           'returning uuid;',
           [
               vendor.nome,
@@ -163,7 +165,9 @@ begin
               vendor.meta_pixel_id,
               vendor.conta_google_ads,
               vendor.g_analytcs,
-              vendor.horario
+              vendor.horario,
+              vendor.latitude,
+              vendor.longitude
           ],
           true
       );

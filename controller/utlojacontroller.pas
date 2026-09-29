@@ -51,7 +51,7 @@ end;
 procedure HandlerUpdateAccounPass(Req: THorseRequest; Res: THorseResponse; next: TNextProc);
 var
    RequestJson, horario: TJSONObject;
-   LojaDados: TLojaReturn;
+   LojaDados: TLojaDados;
    lojaModel: TLojaModel;
 begin
   try
@@ -480,7 +480,7 @@ procedure HandlerUpdateEndereco(req: THorseRequest; res: THorseResponse;
 var
   id_loja, cep, endereco,
     numero, bairro, cidade,
-    estado, complemento:string;
+    estado, complemento, latitude, longitude:string;
   jsonReq: TJSONObject;
 begin
   jsonReq := nil;
@@ -500,16 +500,18 @@ begin
         exit;
       end;
 
-      cep         := jsonReq.find('cep'        ).AsString;
-      endereco    := jsonReq.find('endereco'   ).AsString;
-      numero      := jsonReq.find('numero'     ).AsString;
-      bairro      := jsonReq.find('bairro'     ).AsString;
-      cidade      := jsonReq.find('cidade'     ).AsString;
-      estado      := jsonReq.find('estado'     ).AsString;
-      complemento := jsonReq.find('complemento').AsString;
+      cep         := TSecurityService.SanitizeInput(Trim(jsonReq.Get('cep',         '')));
+      endereco    := TSecurityService.SanitizeInput(Trim(jsonReq.Get('endereco',    '')));
+      numero      := TSecurityService.SanitizeInput(Trim(jsonReq.Get('numero',      '')));
+      bairro      := TSecurityService.SanitizeInput(Trim(jsonReq.Get('bairro',      '')));
+      cidade      := TSecurityService.SanitizeInput(Trim(jsonReq.Get('cidade',      '')));
+      estado      := TSecurityService.SanitizeInput(Trim(jsonReq.Get('estado',      '')));
+      complemento := TSecurityService.SanitizeInput(Trim(jsonReq.Get('complemento', '')));
+      latitude    := TSecurityService.SanitizeInput(Trim(jsonReq.Get('latitude',    '')));
+      longitude   := TSecurityService.SanitizeInput(Trim(jsonReq.Get('longitude',   '')));
 
       TLojaModel.UpdateEndereco(id_loja, cep, endereco, numero, bairro,
-        cidade, estado, complemento);
+        cidade, estado, complemento, latitude, longitude);
 
       TJsonView.SendSuccess(res);
     except on e:exception do

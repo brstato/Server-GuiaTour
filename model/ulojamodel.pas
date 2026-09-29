@@ -9,7 +9,7 @@ uses
   ZDataset, fpjson, BCrypt, DateUtils, db;
 
 type
-  TLojaReturn = Record
+  TLojaDados = Record
     id,
     nome,
     telefone,
@@ -33,7 +33,7 @@ type
     google_ads_nome,
     google_ads_id: string;
     latitude,
-    longitude: double;
+    longitude: string;
     id_categoria: integer;
   end;
 
@@ -60,7 +60,7 @@ type
        function createloja(const ANome, ATelefone, AEmail, horario, slug: UTF8String
          ): integer; overload;
        class function createloja(const ANome, AEmail: string):string; overload;
-       procedure updateAccount(const LojaDados: TLojaReturn);
+       procedure updateAccount(const LojaDados: TLojaDados);
        function getDataAccount(const id: string): TJSONObject;
        class function GetInfoStudio(const slug: string): TJSONObject;
        class function get_slug(slug, id:string): Boolean;
@@ -74,7 +74,7 @@ type
          id_categoria:integer);
        class procedure UpdateAccounContato(id, telefone, email, instagram: string);
        class procedure UpdateEndereco(id, cep, endereco, numero, bairro, cidade,
-         estado, complemento: string);
+         estado, complemento, latitude, longitude: string);
        class function GetEnderecoCep(ACEP: string): TJSONObject;
        class procedure UpdateConfiguracoesAvancadas(id_loja, g_analytcs,
         meta_pixel_id, conta_google_ads, horario: string);
@@ -235,7 +235,7 @@ begin
    end;
 end;
 
-procedure TLojaModel.updateAccount(const LojaDados: TLojaReturn);
+procedure TLojaModel.updateAccount(const LojaDados: TLojaDados);
 var
    senha: string;
    StringError: TStringList;
@@ -283,7 +283,7 @@ var
    query: TDataSet;
    gtData: TGetData;
    json, jsonHorario: TJSONObject;
-   LojaDados: TLojaReturn;
+   LojaDados: TLojaDados;
 begin
    gtData := TGetData.Create;
    json := TJSONObject.Create;
@@ -293,7 +293,7 @@ begin
        'slug, endereco, cidade, uf, cep, numero, complemento, bairro, '+
        'meta_pixel_id, google_analytics_id, insta, meta_long_token, '+
        'meta_ads_id, meta_campanha_ativa, '+
-       'google_ads_id, google_ads_nome, id_categoria '+
+       'google_ads_id, google_ads_nome, id_categoria, latitude, longitude '+
        'from loja where uuid = :id;',
        [id],
        true
@@ -323,6 +323,8 @@ begin
              LojaDados.StatusCampanha := FieldByName('meta_campanha_ativa').AsString;
              LojaDados.google_ads_nome:= FieldByName('google_ads_nome'    ).AsString;
              LojaDados.google_ads_id  := FieldByName('google_ads_id'      ).AsString;
+             LojaDados.latitude       := FieldByName('latitude'           ).AsString;
+             LojaDados.longitude      := FieldByName('longitude'          ).AsString;
              LojaDados.id_categoria   := FieldByName('id_categoria'       ).AsInteger;
              LojaDados.horario_str    := FieldByName('horarios'           ).AsUTF8String;
 
@@ -358,6 +360,8 @@ begin
              json.add('conta_google_ads_nome', LojaDados.google_ads_nome);
              json.add('conta_google_ads_id',     LojaDados.google_ads_id);
              json.add('id_categoria',             LojaDados.id_categoria);
+             json.add('latitude',                     LojaDados.latitude);
+             json.add('longitude',                   LojaDados.longitude);
            end;
        end;
      end;
@@ -562,13 +566,14 @@ begin
 end;
 
 class procedure TLojaModel.UpdateEndereco(id, cep, endereco, numero, bairro,
-  cidade, estado, complemento: string);
+  cidade, estado, complemento, latitude, longitude: string);
 begin
   try
     TGetData.getData(
       'update loja set cep = :cep, endereco = :endereco, '+
       'numero = :numero, bairro = :bairro, cidade = :cidade, '+
-      'uf = :estado, complemento = :complemento '+
+      'uf = :estado, complemento = :complemento, latitude = '+
+      ':latitude, longitude = :longitude '+
       'where uuid = :id;',
       [
         cep,
@@ -578,6 +583,8 @@ begin
         cidade,
         estado,
         complemento,
+        latitude,
+        longitude,
         id
       ]
     );

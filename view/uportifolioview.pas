@@ -118,8 +118,8 @@ begin
   HTMLFinal := StringReplace(HTMLFinal, '{{SCHEMA_CIDADE}}', Perfil.Cidade, [rfReplaceAll]);
   HTMLFinal := StringReplace(HTMLFinal, '{{SCHEMA_UF}}', Perfil.Uf, [rfReplaceAll]);
   HTMLFinal := StringReplace(HTMLFinal, '{{SCHEMA_CEP}}', Perfil.CEP, [rfReplaceAll]);
-  HTMLFinal := StringReplace(HTMLFinal, '{{SCHEMA_LATITUDE}}', Perfil.Latitude, [rfReplaceAll]);
-  HTMLFinal := StringReplace(HTMLFinal, '{{SCHEMA_LONGITUDE}}', Perfil.Longitude, [rfReplaceAll]);
+  HTMLFinal := StringReplace(HTMLFinal, '{{LATITUDE}}', Perfil.Latitude, [rfReplaceAll]);
+  HTMLFinal := StringReplace(HTMLFinal, '{{LONGITUDE}}', Perfil.Longitude, [rfReplaceAll]);
   HTMLFinal := StringReplace(HTMLFinal, '{{SCHEMA_DIAS}}', Perfil.SchemaDias, [rfReplaceAll]);
   HTMLFinal := StringReplace(HTMLFinal, '{{SCHEMA_ABRE}}', Perfil.SchemaAbre, [rfReplaceAll]);
   HTMLFinal := StringReplace(HTMLFinal, '{{SCHEMA_FECHA}}', Perfil.SchemaFecha, [rfReplaceAll]);
