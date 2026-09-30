@@ -11,7 +11,8 @@ const
   LIMITE_COMERCIOS_PROXIMOS = 12;
   MAX_IMAGEM_BYTES  = 5 * 1024 * 1024;   // tamanho máximo de cada imagem já decodificada
   MAX_FOTOS_GALERIA = 20;                // máximo de fotos por requisição
-  MAX_SLUG_BASE     = 140;               // deixa folga para o sufixo "-N" (coluna slug: 160)
+  MAX_SLUG_BASE     = 90;                // coluna SLUG = 100; folga para o sufixo "-N"
+  MAX_PLANO_DESTAQUE = 3;   // maior nível de PLANO_DESTAQUE em uso; define a caixa do pré-filtro
 
 type
   EImagemInvalida = class(Exception);
@@ -77,6 +78,8 @@ type
   end;
 
 implementation
+
+uses uguiatourutils;
 
 
 function GetImageFilePathFromUrl(const Url: string): string;
@@ -705,7 +708,8 @@ end;
 class function TPontoTuristicoModel.GetComerciosProximos(slug: string): TJSONArray;
 var
   dsPonto, dataset: TDataSet;
-  lat, lng: Double;
+  lat, lng, raioMax: Double;
+  latMin, latMax, lngMin, lngMax: Double;
   item: TJSONObject;
 begin
   Result := TJSONArray.Create;
@@ -721,22 +725,21 @@ begin
     );
 
     if (not Assigned(dsPonto)) or dsPonto.IsEmpty then Exit;
+    if dsPonto.FieldByName('latitude').IsNull or
+       dsPonto.FieldByName('longitude').IsNull then Exit;
 
     lat := dsPonto.FieldByName('latitude' ).AsFloat;
     lng := dsPonto.FieldByName('longitude').AsFloat;
 
-    // BASE calcula o cosseno da distância uma vez; DIST limita esse valor a
-    // [-1, 1] antes do ACOS (evita erro aritmético com coordenadas idênticas).
-    // O raio efetivo de cada comércio cresce com o PLANO_DESTAQUE dele
-    // (0 = plano free = só o raio base).
-    // Atenção: os placeholders abaixo são posicionais na ORDEM em que
-    // aparecem no texto (o getData faz bind por índice, não por nome),
-    // então :lat/:lng repetidos exigem o valor repetido no array também.
+    raioMax := RAIO_BASE_KM + MAX_PLANO_DESTAQUE * RAIO_EXTRA_POR_NIVEL_KM;
+    CalcularCaixa(lat, lng, raioMax, latMin, latMax, lngMin, lngMax);
+
     dataset := TGetData.getData(
       'WITH BASE AS (' +
       '  SELECT l.uuid, l.nome, l.slug, ' +
       '         COALESCE(l.plano_destaque, 0) AS plano_destaque, ' +
       '         c.nome AS categoria_nome, s.avatar, ' +
+      '         l.latitude AS lat_c, l.longitude AS lng_c, ' +
       '         (COS(RADIANS(:lat)) * COS(RADIANS(l.latitude)) * ' +
       '          COS(RADIANS(l.longitude) - RADIANS(:lng)) + ' +
       '          SIN(RADIANS(:lat)) * SIN(RADIANS(l.latitude))) AS cos_d ' +
@@ -744,9 +747,12 @@ begin
       '  JOIN categoria c ON c.id = l.id_categoria ' +
       '  LEFT JOIN site s ON s.id_loja_ex = l.uuid ' +
       '  WHERE l.latitude IS NOT NULL AND l.longitude IS NOT NULL ' +
-      '    AND l.validade >= CURRENT_DATE' +
+      '    AND l.validade >= CURRENT_DATE ' +
+      '    AND l.latitude  BETWEEN :lat_min AND :lat_max ' +
+      '    AND l.longitude BETWEEN :lng_min AND :lng_max' +
       '), DIST AS (' +
       '  SELECT uuid, nome, slug, plano_destaque, categoria_nome, avatar, ' +
+      '         lat_c, lng_c, ' +
       '         6371 * ACOS(CASE WHEN cos_d > 1.0 THEN 1.0 ' +
       '                          WHEN cos_d < -1.0 THEN -1.0 ' +
       '                          ELSE cos_d END) AS distancia_km ' +
@@ -758,6 +764,7 @@ begin
       'ROWS :limite;',
       [
         lat, lng, lat,
+        latMin, latMax, lngMin, lngMax,
         RAIO_BASE_KM, RAIO_EXTRA_POR_NIVEL_KM,
         LIMITE_COMERCIOS_PROXIMOS
       ],
@@ -767,13 +774,15 @@ begin
     while not dataset.EOF do
     begin
       item := TJSONObject.Create;
-      item.Add('uuid',          dataset.FieldByName('uuid'         ).AsString);
-      item.Add('nome',          dataset.FieldByName('nome'         ).AsString);
-      item.Add('slug',          dataset.FieldByName('slug'         ).AsString);
-      item.Add('categoria',     dataset.FieldByName('categoria_nome').AsString);
-      item.Add('avatar',        dataset.FieldByName('avatar'       ).AsString);
-      item.Add('distancia_km',  RoundTo(dataset.FieldByName('distancia_km').AsFloat, -1));
-      item.Add('destacado',     dataset.FieldByName('plano_destaque').AsInteger > 0);
+      item.Add('uuid',         dataset.FieldByName('uuid'          ).AsString);
+      item.Add('nome',         dataset.FieldByName('nome'          ).AsString);
+      item.Add('slug',         dataset.FieldByName('slug'          ).AsString);
+      item.Add('categoria',    dataset.FieldByName('categoria_nome').AsString);
+      item.Add('avatar',       dataset.FieldByName('avatar'        ).AsString);
+      item.Add('latitude',     dataset.FieldByName('lat_c'         ).AsFloat);
+      item.Add('longitude',    dataset.FieldByName('lng_c'         ).AsFloat);
+      item.Add('distancia_km', RoundTo(dataset.FieldByName('distancia_km').AsFloat, -1));
+      item.Add('destacado',    dataset.FieldByName('plano_destaque').AsInteger > 0);
       Result.Add(item);
       dataset.Next;
     end;

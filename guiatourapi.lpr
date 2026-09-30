@@ -10,11 +10,12 @@ uses
   {$ENDIF}
   Classes, SysUtils,
   { you can add units after this }
-  udata, uconfig, usecurityservice, uNetService, ugetdata, uJsonView,
-  uguiatourview, CustApp, urouter, uTlogincontroller, utlojacontroller,
-  uportifoliocontroller, uloginmodel, ulojamodel, uportifoliomodel,
-  uvendedormodel, Horse, utvendedorcontroller, utPontoscontroller,
-  upontoturisticomodel
+  udata, uconfig, usecurityservice, uNetService, ugetdata, uguiatourutils,
+  uratelimit, uJsonView, uguiatourview, uguiatourpontoview, CustApp, urouter,
+  uTlogincontroller, utlojacontroller, uportifoliocontroller, uloginmodel,
+  ulojamodel, uportifoliomodel, uvendedormodel, Horse, utvendedorcontroller,
+  utPontoscontroller, utguiatourpublicocontroller, upontoturisticomodel,
+  ubuscamodel, ueventomodel
   ;
 
 type

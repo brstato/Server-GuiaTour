@@ -183,6 +183,7 @@ begin
     jsonRes := TJSONObject.Create;
     jsonRes.Add('itens', arrayItens);
 
+    Res.AddHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
     TJsonView.SendResponseJsonObject(Res, jsonRes, 200);
   except on e: Exception do
     begin
@@ -316,6 +317,7 @@ begin
       Exit;
     end;
 
+    Res.AddHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
     TJsonView.SendResponseJsonObject(Res, jsonRes, 200);
   except on e: Exception do
     begin
@@ -351,6 +353,7 @@ begin
     jsonRes := TJSONObject.Create;
     jsonRes.Add('itens', arrayItens);
 
+    Res.AddHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
     TJsonView.SendResponseJsonObject(Res, jsonRes, 200);
   except on e: Exception do
     begin
@@ -382,6 +385,7 @@ begin
     jsonRes := TJSONObject.Create;
     jsonRes.Add('itens', arrayItens);
 
+    Res.AddHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
     TJsonView.SendResponseJsonObject(Res, jsonRes, 200);
   except on e: Exception do
     begin
@@ -444,6 +448,7 @@ begin
     jsonRes := TJSONObject.Create;
     jsonRes.Add('itens', arrayItens);
 
+    Res.AddHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
     TJsonView.SendResponseJsonObject(Res, jsonRes, 200);
   except on e: Exception do
     begin
