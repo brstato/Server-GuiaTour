@@ -65,6 +65,7 @@ type
     class function Slugify(const AValue: string): string;
     class function GerarSlugUnico(const Base: string; const UuidIgnorar: string = ''): string;
     class function GerarNomeArquivoSeguro(const NomeOriginal, UuidPonto: string; out NomeFinal: string): Boolean;
+    class procedure RemoveItem(const id: integer);
   private
     class function MontarGaleriaJson(idPonto: integer): TJSONArray;
     class function ConteudoPareceImagem(const dados: string): Boolean;
@@ -76,6 +77,26 @@ type
   end;
 
 implementation
+
+
+function GetImageFilePathFromUrl(const Url: string): string;
+begin
+  Result := '';
+  if Trim(Url) = '' then
+    Exit;
+
+  Result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) +
+            'uploads' + PathDelim + ExtractFileName(Url);
+end;
+
+procedure DeleteImageFile(const Url: string);
+var
+  FilePath: string;
+begin
+  FilePath := GetImageFilePathFromUrl(Url);
+  if (FilePath <> '') and FileExists(FilePath) then
+    DeleteFile(FilePath);
+end;
 
 { ---------- helpers ---------- }
 
@@ -943,7 +964,42 @@ begin
                   '}', '', [rfReplaceAll]) + ext;
 end;
 
-class function TPontoTuristicoModel.GerarSlugUnico(const Base, UuidIgnorar: string): string;
+class procedure TPontoTuristicoModel.RemoveItem(const id: integer);
+var
+  dataset: TDataSet;
+  url_foto: string;
+begin
+  try
+    url_foto := '';
+    dataset := TGetData.getData(
+      'select url_foto from PONTO_TURISTICO_GALERIA where id = :id',
+      [id],
+      True
+    );
+    if Assigned(dataset) then
+    begin
+      try
+        if not dataset.IsEmpty then
+          url_foto := dataset.FieldByName('url_foto').AsString;
+      finally
+        dataset.Free;
+      end;
+    end;
+
+    if url_foto <> '' then
+      DeleteImageFile(url_foto);
+
+    TGetData.getData(
+      'delete from PONTO_TURISTICO_GALERIA where id = :id',
+      [id]
+    );
+  except
+    raise;
+  end;
+end;
+
+class function TPontoTuristicoModel.GerarSlugUnico(const Base: string;
+  const UuidIgnorar: string): string;
 var
   ds: TDataSet;
   n: Integer;

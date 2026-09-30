@@ -226,4 +226,6 @@ begin
   .Post('api/v1/vendedor/comercio', HandlerCriarComercio);
 end;
 
+
+
 end.

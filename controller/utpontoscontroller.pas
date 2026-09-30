@@ -560,6 +560,41 @@ begin
   end;
 end;
 
+procedure HandlerRemoveItem(req: THorseRequest; Res: THorseResponse;
+  next: TNextProc);
+var
+  id: integer;
+  str_id: string;
+  jsonreq: TJSONObject;
+begin
+  jsonreq := nil;
+  try
+    try
+      jsonreq := TJSONObject(GetJSON(req.Body));
+      if not Assigned(jsonreq) then
+      begin
+        TJsonView.SendError(res, 400, 'Json mal formado.');
+        exit;
+      end;
+
+      id := StrToIntDef(jsonreq.find('id_foto').AsString, 0);
+      if id = 0 then
+      begin
+        TJsonView.SendError(res, 400, 'Id da foto não informado.');
+        exit;
+      end;
+
+      TPontoTuristicoModel.RemoveItem(id);
+
+      TJsonView.SendSuccess(res);
+    except on e:exception do
+      TJsonView.SendError(res, 500, e.Message);
+    end;
+  finally
+    FreeAndNil(jsonreq);
+  end;
+end;
+
 class procedure TPontoTuristicoController.RegisterRoutes();
 begin
   THorse.AddCallback(HorseJWT(TConfig.Token))
@@ -579,6 +614,9 @@ begin
 
   THorse.AddCallback(HorseJWT(TConfig.Token))
   .Delete('api/v1/vendedor/ponto-turistico/:uuid/galeria/:idFoto', HandlerRemoverFotoGaleria);
+
+  THorse.AddCallback(HorseJWT(TConfig.Token))
+  .Post('api/v1/portfolio/remove', HandlerRemoveItem);
 
   // --- Público (sem JWT) ---
   THorse.Get('api/v1/ponto/:slug', HandlerGetPontoPublico);
