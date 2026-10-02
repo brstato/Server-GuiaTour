@@ -33,7 +33,7 @@ type
 
 { TGuiaTourAPI }
 var
-index_html: string;
+index_html, guiatour_html: string;
 
 procedure CarregarIndexMemoria;
 var
@@ -55,6 +55,21 @@ begin
   end
   else
     index_html := '<h1>Erro: index.html não encontrado no servidor.</h1>';
+
+  CaminhoArquivo := ExtractFilePath(ParamStr(0)) + '/templates/ponto.html';
+
+  if FileExists(CaminhoArquivo) then
+  begin
+    SL := TStringList.Create;
+    try
+      SL.LoadFromFile(CaminhoArquivo);
+      guiatour_html := SL.Text;
+    finally
+      SL.Free;
+    end;
+  end
+  else
+    guiatour_html := '<h1>Erro: index.html não encontrado no servidor.</h1>';
 end;
 
 procedure TGuiaTourAPI.DoRun;

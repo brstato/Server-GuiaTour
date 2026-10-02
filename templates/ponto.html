@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{PAGE_TITLE}}</title>
+<meta name="description" content="{{META_DESCRIPTION}}">
+<link rel="canonical" href="{{CANONICAL_URL}}">
+<meta name="theme-color" content="#2563eb">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{OG_TITLE}}">
+<meta property="og:description" content="{{OG_DESCRIPTION}}">
+<meta property="og:image" content="{{OG_IMAGE_URL}}">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script type="application/ld+json">{{SCHEMA_JSON}}</script>
+<style>
+:root{--bg:#f8fafc;--ink:#0f172a;--ink2:#334155;--mudo:#64748b;--linha:#e2e8f0;
+--azul:#2563eb;--azul-h:#1d4ed8;--azul-suave:#eff6ff;--azul-borda:#bfdbfe;
+--font:"Geist","Geist Variable",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color-scheme:light}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;min-height:100vh;background:linear-gradient(135deg,#f8fafc,rgba(239,246,255,.45) 50%,#f1f5f9);color:var(--ink);font:16px/1.55 var(--font);-webkit-text-size-adjust:100%}
+body::before,body::after{content:"";position:fixed;z-index:-1;border-radius:50%;pointer-events:none}
+body::before{top:-96px;right:-96px;width:384px;height:384px;background:rgba(59,130,246,.10);filter:blur(64px)}
+body::after{bottom:-96px;left:-96px;width:256px;height:256px;background:rgba(99,102,241,.10);filter:blur(48px)}
+img{display:block;max-width:100%}
+a{color:inherit}
+h1,h2,h3,p,ul{margin:0}
+:focus-visible{outline:3px solid rgba(37,99,235,.55);outline-offset:2px}
+.hero :focus-visible,dialog :focus-visible{outline-color:#fff}
+.wrap{width:min(1080px,100% - 40px);margin-inline:auto}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.skip{position:absolute;left:12px;top:-60px;z-index:10;background:#fff;padding:.6em 1em;border-radius:8px}
+.skip:focus{top:12px}
+[hidden]{display:none!important}
+svg.i{flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Botões (mesmo padrão do painel) */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:.65em 1.2em;border:1px solid transparent;border-radius:12px;background:var(--azul);color:#fff;font:600 .92rem/1.2 var(--font);text-decoration:none;white-space:nowrap;cursor:pointer;box-shadow:0 1px 2px rgba(37,99,235,.25),0 4px 12px rgba(37,99,235,.18);transition:background .15s,transform .1s}
+.btn:hover{background:var(--azul-h)}
+.btn:active{transform:scale(.98)}
+.btn.alt{background:#fff;color:var(--ink2);border-color:var(--linha);box-shadow:0 1px 2px rgba(15,23,42,.05)}
+.btn.alt:hover{background:var(--bg);color:var(--ink)}
+.btn.ghost{background:none;color:var(--ink2);box-shadow:none;padding-inline:.7em;font-weight:500}
+.btn.ghost:hover{background:var(--azul-suave);color:var(--azul)}
+.chip{display:inline-block;padding:1px 9px;border:1px solid var(--azul-borda);border-radius:999px;background:var(--azul-suave);color:var(--azul-h);font-size:.78rem;font-weight:600}
+
+/* Capa */
+.hero{position:relative;display:flex;align-items:flex-end;min-height:440px;height:80vh;height:80svh;max-height:780px;overflow:hidden;border-radius:0 0 28px 28px;color:#fff;background:linear-gradient(135deg,#2563eb,#0f172a)}
+.hero>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:settle 1.8s cubic-bezier(.2,.7,.2,1) both}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(15,23,42,.9),rgba(15,23,42,.4) 45%,rgba(15,23,42,0) 72%),linear-gradient(to bottom,rgba(15,23,42,.4),transparent 24%)}
+.bar{position:absolute;z-index:2;inset:12px 12px auto;display:flex;justify-content:space-between;align-items:center;padding:8px 8px 8px 12px;border:1px solid rgba(255,255,255,.6);border-radius:14px;background:rgba(255,255,255,.84);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:var(--ink);box-shadow:0 1px 2px rgba(15,23,42,.08)}
+.brand{display:flex;align-items:center;gap:10px;font-size:.82rem;font-weight:800;letter-spacing:-.01em;text-transform:uppercase;text-decoration:none}
+.brand i{display:grid;place-items:center;width:32px;height:32px;border:1px solid #dbeafe;border-radius:10px;background:var(--azul-suave);color:var(--azul)}
+.bar .btn{min-height:36px;padding:.4em .9em;font-size:.85rem}
+.hero .wrap{position:relative;z-index:1;padding-bottom:46px}
+.hero .wrap>*{animation:rise .9s cubic-bezier(.2,.7,.2,1) both}
+.hero .wrap>:nth-child(1){animation-delay:.45s}.hero .wrap>:nth-child(2){animation-delay:.6s}.hero .wrap>:nth-child(3){animation-delay:.75s}
+.cat{display:inline-block;padding:.3em .9em;border:1px solid rgba(255,255,255,.4);border-radius:999px;background:rgba(255,255,255,.16);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);font-size:.88rem;font-weight:500}
+.cat:empty{display:none}
+h1{margin:.4em 0 .25em;max-width:16ch;font-size:clamp(2.4rem,8.5vw,4.8rem);font-weight:800;line-height:1.03;letter-spacing:-.035em;text-wrap:balance}
+.where{display:flex;align-items:center;gap:.45em;font-size:1.05rem;font-weight:500;color:rgba(255,255,255,.92)}
+@keyframes settle{from{transform:scale(1.07)}to{transform:scale(1)}}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* Contexto e busca */
+.ctx{background:var(--azul-suave);border-bottom:1px solid var(--azul-borda)}
+.ctx .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:16px 0}
+.ctx p{flex:1 1 240px;color:var(--ink2);font-weight:500}
+.search{display:none;padding-bottom:16px}
+.search.open{display:block}
+.search input{width:100%;min-height:48px;padding:.6em 1em;border:1px solid var(--azul-borda);border-radius:12px;background:#fff;color:var(--ink);font:1rem var(--font)}
+.search input:focus{outline:3px solid rgba(37,99,235,.3);border-color:var(--azul)}
+.res{list-style:none;padding:0;margin-top:8px;border:1px solid var(--linha);border-radius:12px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.08);overflow:hidden}
+.res:empty{display:none}
+.res li+li{border-top:1px solid var(--linha)}
+.res a,.res button{display:block;width:100%;padding:.8em 1em;border:0;background:none;color:var(--ink);font:inherit;font-weight:500;text-align:left;text-decoration:none;cursor:pointer}
+.res a:hover,.res button:hover,.res a:focus-visible,.res button:focus-visible{background:var(--azul-suave)}
+.res small{display:block;color:var(--mudo);font-weight:400}
+.res .none{padding:.8em 1em;color:var(--mudo)}
+
+/* História */
+.story{padding:56px 0 8px}
+.story .wrap{display:grid;gap:24px}
+.story h2,.gal h2,.more-sec h2,.near h2{margin-bottom:.5em;font-size:clamp(1.5rem,4.5vw,2.1rem);font-weight:800;line-height:1.15;letter-spacing:-.025em}
+.lead{color:var(--ink);font-size:1.25rem;font-weight:500;line-height:1.5}
+.lead:empty{display:none}
+.hist{max-width:62ch;color:var(--ink2);font-size:1.05rem;line-height:1.75}
+.hist p{margin-bottom:1em}
+.hist.clamp{max-height:11.5em;overflow:hidden;-webkit-mask-image:linear-gradient(#000 55%,transparent);mask-image:linear-gradient(#000 55%,transparent)}
+#more{margin-top:.5em}
+.nearlink{display:inline-flex;align-items:center;gap:6px;margin-top:18px;font-weight:600;color:var(--azul);text-decoration:none}
+.nearlink:hover{color:var(--azul-h);text-decoration:underline}
+@media(min-width:860px){.story .wrap{grid-template-columns:5fr 7fr;gap:64px}}
+
+/* Galeria */
+.gal{padding:40px 0 8px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.grid button{position:relative;padding:0;border:1px solid var(--linha);border-radius:16px;overflow:hidden;aspect-ratio:1;background:var(--linha);cursor:zoom-in}
+.grid button:first-child{grid-column:span 2;aspect-ratio:16/10}
+.grid img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
+.grid button:hover img{transform:scale(1.04)}
+.grid .more{position:absolute;inset:0;display:grid;place-items:center;background:rgba(15,23,42,.55);color:#fff;font-size:1.6rem;font-weight:700}
+@media(min-width:760px){.grid{grid-template-columns:repeat(4,1fr)}.grid button:first-child{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}}
+dialog{width:100%;height:100%;max-width:100vw;max-height:100vh;padding:0;border:0;background:transparent;color:#fff}
+dialog::backdrop{background:rgba(15,23,42,.94)}
+.lb{position:relative;display:grid;place-items:center;height:100%}
+.lb img{max-width:94vw;max-height:82vh;object-fit:contain;border-radius:12px}
+.lb button{position:absolute;width:48px;height:48px;border:0;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font-size:1.5rem;cursor:pointer}
+.lb button:hover{background:rgba(255,255,255,.3)}
+#lbx{top:14px;right:14px}#lbp{left:12px;top:50%}#lbf{right:12px;top:50%}
+#lbn{position:absolute;bottom:16px;font-size:.95rem}
+
+/* Vitrine: perto daqui */
+.near{margin-top:48px;padding:56px 0;border-top:1px solid var(--azul-borda);background:linear-gradient(180deg,var(--azul-suave),rgba(248,250,252,0))}
+.near .sub{max-width:60ch;color:var(--mudo)}
+.nbox{display:grid;gap:16px;margin-top:24px}
+#map{position:relative;height:360px;border:1px solid var(--linha);border-radius:20px;overflow:hidden;background:var(--linha);box-shadow:0 8px 30px rgba(15,23,42,.08)}
+#map p{padding:24px;color:var(--ink2)}
+#map a{color:var(--azul)}
+.pw{transform:translateY(50%)}
+.me{width:18px;height:18px;border:3px solid #fff;border-radius:50%;background:var(--azul);box-shadow:0 0 0 6px rgba(37,99,235,.25);transform:translateY(50%)}
+.shops{position:relative;display:flex;gap:12px;overflow-x:auto;padding:4px 2px 14px;list-style:none;scroll-snap-type:x mandatory}
+.shops>li{flex:0 0 min(300px,82%);scroll-snap-align:center;padding:14px;border:1px solid var(--linha);border-radius:16px;background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(15,23,42,.05);transition:box-shadow .2s,border-color .2s}
+.shops>li:hover{box-shadow:0 10px 28px rgba(37,99,235,.12)}
+.shops>li[aria-current=true]{border-color:var(--azul);box-shadow:0 0 0 3px rgba(37,99,235,.18)}
+.shops>li.info{flex:1;padding:8px 0;border:0;background:none;box-shadow:none;color:var(--mudo)}
+.pick{display:flex;gap:12px;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.av{flex:none;display:grid;place-items:center;width:64px;height:64px;border:1px solid var(--azul-borda);border-radius:14px;background:var(--azul-suave);color:var(--azul);font-size:1.4rem;font-weight:700;object-fit:cover}
+.nm{display:block;font-size:1.02rem;font-weight:700;line-height:1.25;letter-spacing:-.01em}
+.ct{display:inline-block;margin:4px 0;padding:1px 9px;border:1px solid var(--azul-borda);border-radius:999px;background:var(--azul-suave);color:var(--azul-h);font-size:.78rem;font-weight:600}
+.ds{display:block;color:var(--mudo);font-size:.88rem;font-weight:500}
+.tag{margin-left:.5em;padding:.12em .6em;border-radius:999px;background:var(--azul);color:#fff;font-size:.72rem;font-weight:700;white-space:nowrap;vertical-align:middle}
+.act{display:flex;gap:8px;margin-top:12px}
+.act .btn{flex:1;min-height:40px;padding:.55em .8em;font-size:.88rem}
+.pin{display:grid;place-items:center;width:34px;height:34px;border:2.5px solid var(--azul);border-radius:50%;background:#fff;color:var(--azul-h);font:700 .85rem var(--font);box-shadow:0 3px 8px rgba(15,23,42,.3);transition:transform .2s}
+.pin.hot{width:40px;height:40px;margin:-3px;border-color:#fff;background:var(--azul);color:#fff;box-shadow:0 0 0 4px rgba(37,99,235,.35),0 3px 8px rgba(15,23,42,.3)}
+.pin.on{border-color:#fff;background:var(--ink);color:#fff;transform:scale(1.2)}
+.pin.pop{animation:pop .45s cubic-bezier(.3,1.5,.5,1) both}
+@keyframes pop{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:none}}
+@media(min-width:900px){
+.nbox{grid-template-columns:7fr 5fr}
+#map{height:540px}
+.shops{flex-direction:column;overflow:hidden auto;max-height:540px;scroll-snap-type:y proximity}
+.shops>li{flex:none}}
+
+/* Explorar */
+.more-sec{padding:56px 0 64px}
+.spots{display:flex;gap:14px;margin-top:20px;padding:0 0 14px;list-style:none;overflow-x:auto;scroll-snap-type:x mandatory}
+.spots>li{flex:0 0 min(260px,74%);scroll-snap-align:start}
+.spots>li.info{flex:1;color:var(--mudo)}
+.spots a{display:block;padding-bottom:14px;border:1px solid var(--linha);border-radius:16px;background:#fff;overflow:hidden;text-decoration:none;box-shadow:0 1px 2px rgba(15,23,42,.05);transition:box-shadow .2s,transform .2s}
+.spots a:hover{box-shadow:0 10px 28px rgba(37,99,235,.14);transform:translateY(-2px)}
+.spots .ph{aspect-ratio:4/3;margin-bottom:12px;overflow:hidden;background:linear-gradient(135deg,var(--azul),var(--ink))}
+.spots img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
+.spots a:hover img{transform:scale(1.04)}
+.spots a>span{margin-inline:14px}
+@media(min-width:760px){.spots{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));overflow:visible}.spots>li{flex:none}}
+footer{padding:28px 0 40px;border-top:1px solid var(--linha);color:var(--mudo);font-size:.9rem}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body data-slug="{{PONTO_SLUG}}">
+<a class="skip" href="#historia">Ir para o conteúdo</a>
+<div id="live" class="sr" role="status" aria-live="polite"></div>
+
+<header class="hero">
+  <img src="{{PONTO_CAPA_URL}}" alt="Foto de {{PONTO_NOME}}" fetchpriority="high" decoding="async">
+  <nav class="bar" aria-label="Principal">
+    <a class="brand" href="/"><i><svg class="i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg></i>Guia Tour</a>
+    <button class="btn alt" id="topSearch" type="button"><svg class="i" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>Buscar outro lugar</button>
+  </nav>
+  <div class="wrap">
+    <p class="cat">{{PONTO_CATEGORIA}}</p>
+    <h1>{{PONTO_NOME}}</h1>
+    <p class="where"><svg class="i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg><span>{{PONTO_CIDADE}}</span></p>
+  </div>
+</header>
+
+<section class="ctx" id="ctx" aria-label="Sua localização">
+  <div class="wrap">
+    <p id="ctxText">Veja o que há por perto, a partir de onde você está.</p>
+    <button class="btn" id="btnLocate" type="button"><svg class="i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/></svg>Usar minha localização</button>
+    <button class="btn ghost" id="btnSearch" type="button" aria-expanded="false" aria-controls="search">Buscar outro lugar</button>
+  </div>
+  <div class="wrap search" id="search">
+    <label class="sr" for="q">Cidade ou ponto turístico</label>
+    <input id="q" type="search" placeholder="Digite uma cidade ou ponto turístico" autocomplete="off" aria-controls="res">
+    <ul class="res" id="res"></ul>
+  </div>
+</section>
+
+<main id="historia">
+  <section class="story" aria-labelledby="hSobre">
+    <div class="wrap">
+      <div>
+        <h2 id="hSobre">Sobre este lugar</h2>
+        <p class="lead">{{PONTO_RESUMO}}</p>
+        <a class="nearlink" id="nearLink" href="#mapa" hidden></a>
+      </div>
+      <div>
+        <div class="hist" id="hist">{{PONTO_HISTORIA_HTML}}</div>
+        <button class="btn ghost" id="more" type="button" aria-expanded="false" hidden>Ler história completa</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="gal" id="gal" aria-labelledby="hFotos" hidden>
+    <div class="wrap">
+      <h2 id="hFotos">Fotos</h2>
+      <div class="grid" id="grid"></div>
+    </div>
+  </section>
+
+  <section class="near" id="mapa" aria-labelledby="hPerto">
+    <div class="wrap">
+      <h2 id="hPerto">O que tem por perto</h2>
+      <p class="sub">Comércios cadastrados no GuiaTour perto de {{PONTO_NOME}}. As distâncias contam a partir do local.</p>
+      <div class="nbox">
+        <div id="map" role="region" aria-label="Mapa com o ponto turístico e os comércios">
+          <noscript><p>Ative o JavaScript para ver o mapa e os comércios por perto.</p></noscript>
+        </div>
+        <ul class="shops" id="shops" aria-busy="true"><li class="info">Carregando comércios…</li></ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="more-sec" id="explorar" aria-labelledby="hExplorar">
+    <div class="wrap">
+      <h2 id="hExplorar">Mais lugares para conhecer</h2>
+      <ul class="spots" id="spots" aria-busy="true"></ul>
+    </div>
+  </section>
+</main>
+
+<footer><div class="wrap">GuiaTour. Pontos turísticos e comércios locais.</div></footer>
+
+<dialog id="lb" aria-label="Galeria de fotos">
+  <div class="lb">
+    <img id="lbi" alt="">
+    <button id="lbx" type="button" aria-label="Fechar">✕</button>
+    <button id="lbp" type="button" aria-label="Foto anterior">‹</button>
+    <button id="lbf" type="button" aria-label="Próxima foto">›</button>
+    <p id="lbn"></p>
+  </div>
+</dialog>
+
+<script type="application/json" id="ponto-data">{{PONTO_JSON}}</script>
+<script>
+(function(){
+'use strict';
+// Chave do Google Maps JavaScript API (restrinja por referenciador: https://guiatour.online/*).
+// mapId: crie um Map ID no Google Cloud (Map Management); 'DEMO_MAP_ID' serve para testar.
+var CFG={gkey:'AIzaSyA5M4yVTKwcI-vHz8qbE0yLiP6hfLCy8MM',mapId:'a49c24d7ae14e69f3d88399e',mpm:80};
+var $=function(s){return document.querySelector(s)};
+function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
+var P={};try{P=JSON.parse($('#ponto-data').textContent)||{}}catch(e){}
+var slug=document.body.dataset.slug,nome=P.nome||'',lat=+P.latitude,lng=+P.longitude;
+var okGeo=isFinite(lat)&&isFinite(lng)&&(lat||lng);
+var shops=[],markers={},map=null,user=null,userMk=null,exCtl=null;
+
+function safe(u){return typeof u==='string'&&/^(\/(?!\/)|https?:\/\/)/.test(u)?u:''}
+function say(t){$('#live').textContent=t}
+function api(u,sig){return fetch(u,{signal:sig,headers:{Accept:'application/json'}}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()})}
+function hav(a,b){var R=6371,r=Math.PI/180,dl=(b.lat-a.lat)*r,dg=(b.lng-a.lng)*r,
+  x=Math.sin(dl/2)*Math.sin(dl/2)+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dg/2)*Math.sin(dg/2);return 2*R*Math.asin(Math.sqrt(x))}
+function dist(km){var m=km*1000;return m/CFG.mpm<=15?Math.max(1,Math.round(m/CFG.mpm))+' min a pé':km.toFixed(1).replace('.',',')+' km'}
+function retry(ul,fn){ul.setAttribute('aria-busy','false');ul.replaceChildren();var li=el('li','info','Não foi possível carregar agora. ');var b=el('button','btn ghost','Tentar de novo');b.type='button';b.onclick=fn;li.append(b);ul.append(li)}
+// Evento de clique: não bloqueia a navegação e falha em silêncio.
+function track(tipo,loja){try{var b=JSON.stringify({tipo:tipo,loja:loja,ponto:slug});
+  if(navigator.sendBeacon)navigator.sendBeacon('/api/v1/evento',new Blob([b],{type:'application/json'}));
+  else fetch('/api/v1/evento',{method:'POST',body:b,keepalive:true,headers:{'Content-Type':'application/json'}})}catch(e){}}
+
+/* Capa sem foto: o degradê do fundo assume */
+var hi=$('.hero>img');
+if(!hi.getAttribute('src'))hi.remove();else hi.addEventListener('error',function(){hi.remove()});
+
+/* História: recolhida só se for longa; o texto completo fica no HTML */
+var hist=$('#hist'),more=$('#more');
+hist.classList.add('clamp');
+if(hist.scrollHeight<=hist.clientHeight+8)hist.classList.remove('clamp');
+else{more.hidden=false;more.onclick=function(){var open=hist.classList.toggle('clamp')===false;more.setAttribute('aria-expanded',open);more.textContent=open?'Mostrar menos':'Ler história completa'}}
+
+/* Galeria e lightbox */
+var G=(P.galeria||[]).map(function(g){return safe(g.url)}).filter(Boolean),lb=$('#lb'),lbi=$('#lbi'),cur=0,sx=0;
+function show(i){cur=(i+G.length)%G.length;lbi.src=G[cur];lbi.alt='Foto '+(cur+1)+' de '+nome;$('#lbn').textContent=(cur+1)+' / '+G.length}
+if(G.length){
+  G.slice(0,7).forEach(function(u,i){var b=el('button');b.type='button';b.setAttribute('aria-label','Ampliar foto '+(i+1));
+    var im=new Image();im.src=u;im.alt='Foto '+(i+1)+' de '+nome;im.loading='lazy';im.decoding='async';b.append(im);
+    if(i===6&&G.length>7)b.append(el('span','more','+'+(G.length-7)));
+    b.onclick=function(){show(i);lb.showModal()};$('#grid').append(b)});
+  $('#gal').hidden=false;
+  $('#lbx').onclick=function(){lb.close()};$('#lbp').onclick=function(){show(cur-1)};$('#lbf').onclick=function(){show(cur+1)};
+  lb.addEventListener('keydown',function(e){if(e.key==='ArrowLeft')show(cur-1);if(e.key==='ArrowRight')show(cur+1)});
+  lb.addEventListener('click',function(e){if(e.target===lb||e.target.className==='lb')lb.close()});
+  lb.addEventListener('pointerdown',function(e){sx=e.clientX});
+  lb.addEventListener('pointerup',function(e){var d=e.clientX-sx;if(Math.abs(d)>60)show(cur+(d<0?1:-1))});
+}
+
+/* Comércios: cards e pins sincronizados */
+function walk(s){var f=user||{lat:lat,lng:lng};
+  return 'https://www.google.com/maps/dir/?api=1&origin='+f.lat+','+f.lng+'&destination='+s.latitude+','+s.longitude+'&travelmode=walking'}
+function hasXY(s){return isFinite(+s.latitude)&&isFinite(+s.longitude)&&(+s.latitude||+s.longitude)}
+function select(id){
+  document.querySelectorAll('.shops>li[data-id]').forEach(function(c){c.setAttribute('aria-current',c.dataset.id===id)});
+  Object.keys(markers).forEach(function(k){var e=markers[k].content;if(e&&e.firstChild)e.firstChild.classList.toggle('on',k===id)});
+  var c=document.querySelector('.shops>li[data-id="'+id+'"]'),l=$('#shops');
+  if(c)l.scrollTo({left:c.offsetLeft-(l.clientWidth-c.offsetWidth)/2,top:c.offsetTop-8,behavior:'smooth'});
+  var s=shops.filter(function(x){return x.uuid===id})[0];
+  if(map&&s&&hasXY(s))map.panTo({lat:+s.latitude,lng:+s.longitude});
+}
+function renderShops(){
+  var ul=$('#shops');ul.replaceChildren();ul.setAttribute('aria-busy','false');
+  if(!shops.length){ul.append(el('li','info','Ainda não há comércios cadastrados por aqui. Veja outros lugares logo abaixo.'));return}
+  var nl=$('#nearLink');nl.textContent=shops.length===1?'Ver o comércio por perto':'Ver os '+shops.length+' comércios por perto';nl.hidden=false;
+  shops.forEach(function(s){
+    var li=el('li');li.dataset.id=s.uuid;
+    var pick=el('button','pick');pick.type='button';
+    var ini=(s.nome||'?').charAt(0).toUpperCase();
+    var av=safe(s.avatar)?Object.assign(new Image(),{src:safe(s.avatar),alt:'',loading:'lazy',className:'av'}):el('span','av',ini);
+    if(av.tagName==='IMG')av.addEventListener('error',function(){av.replaceWith(el('span','av',ini))});
+    var tx=el('span');var nm=el('span','nm',s.nome||'');
+    if(s.destacado)nm.append(el('span','tag','Destaque'));
+    tx.append(nm,el('span','ct',s.categoria||''),el('span','ds',dist(+s.distancia_km||0)));
+    pick.append(av,tx);
+    pick.onclick=function(){select(s.uuid);track('card',s.slug)};
+    var act=el('div','act');
+    var ver=el('a','btn','Ver página');ver.href='/loja/'+encodeURIComponent(s.slug);ver.onclick=function(){track('ver',s.slug)};
+    act.append(ver);
+    if(hasXY(s)){var r=el('a','btn alt','Como chegar');r.href=walk(s);r.target='_blank';r.rel='noopener';
+      r.onclick=function(){r.href=walk(s);track('rota',s.slug)};act.append(r)}
+    li.append(pick,act);ul.append(li);
+  });
+  if(map)addPins();
+}
+function loadShops(){
+  var ul=$('#shops');
+  api('/api/v1/ponto/'+encodeURIComponent(slug)+'/comercios-proximos').then(function(d){
+    shops=(d.itens||[]).filter(function(s){return s.slug&&s.uuid});renderShops();
+    say(shops.length?shops.length+' comércios por perto.':'Nenhum comércio cadastrado por perto.');
+  }).catch(function(){retry(ul,function(){ul.setAttribute('aria-busy','true');loadShops()})});
+}
+
+/* Mapa do Google (carregado só quando a seção se aproxima) */
+var SVG='<svg width="44" height="48" viewBox="0 0 44 48" aria-hidden="true"><circle cx="22" cy="22" r="21" fill="#2563eb" opacity=".28"/><path d="M22 4C14 4 8 10 8 18c0 10 14 28 14 28s14-18 14-28C36 10 30 4 22 4z" fill="#0f172a" stroke="#fff" stroke-width="2.500"/><circle cx="22" cy="18" r="5" fill="#fff"/></svg>';
+function loadGoogle(){return window.google&&google.maps&&google.maps.importLibrary?Promise.resolve():new Promise(function(ok,no){
+  if(!CFG.gkey||CFG.gkey.indexOf('COLE')===0){no(new Error('CFG.gkey ainda está com o texto de exemplo: coloque a chave de API do Google'));return}
+  var s=el('script');s.async=true;
+  window.__gmCb=ok;   // com loading=async, o google.maps.importLibrary só existe quando o callback dispara
+  s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(CFG.gkey)+'&v=weekly&loading=async&language=pt-BR&region=BR&callback=__gmCb';
+  s.onerror=function(){no(new Error('o script do Google Maps não carregou (rede, extensão ou CSP bloqueando maps.googleapis.com)'))};document.head.append(s)})}
+function addPins(){
+  var n=0,b=new google.maps.LatLngBounds();b.extend({lat:lat,lng:lng});
+  shops.forEach(function(s){
+    if(!hasXY(s))return;
+    var pos={lat:+s.latitude,lng:+s.longitude};b.extend(pos);
+    if(markers[s.uuid])return;
+    var p=el('div','pin pop'+(s.destacado?' hot':''),(s.nome||'?').charAt(0).toUpperCase());p.style.animationDelay=(n++*60)+'ms';
+    var w=el('div','pw');w.append(p);
+    var m=new google.maps.marker.AdvancedMarkerElement({map:map,position:pos,content:w,title:s.nome,zIndex:s.destacado?500:1,gmpClickable:true});
+    m.addEventListener('gmp-click',function(){select(s.uuid);track('pin',s.slug)});markers[s.uuid]=m;
+  });
+  if(Object.keys(markers).length){map.fitBounds(b,44);
+    google.maps.event.addListenerOnce(map,'idle',function(){if(map.getZoom()>17)map.setZoom(17)})}
+}
+function initMap(){
+  if(map||!okGeo)return;
+  loadGoogle().then(function(){return Promise.all([google.maps.importLibrary('core'),google.maps.importLibrary('maps'),google.maps.importLibrary('marker')])}).then(function(){
+    map=new google.maps.Map($('#map'),{center:{lat:lat,lng:lng},zoom:15,mapId:CFG.mapId,gestureHandling:'cooperative',
+      disableDefaultUI:true,zoomControl:true,clickableIcons:false});
+    var w=el('div');w.innerHTML=SVG;
+    new google.maps.marker.AdvancedMarkerElement({map:map,position:{lat:lat,lng:lng},content:w.firstChild,title:nome,zIndex:1000});
+    addPins();if(user)putUser();
+  }).catch(function(e){console.warn('Mapa:',e&&e.message?e.message:e);mapFail()});
+}
+// Mapa indisponível (script não carregou ou chave recusada): mostra o link e mantém os cards.
+function mapFail(){
+  var m=$('#map');m.replaceChildren();var p=el('p','','Não foi possível carregar o mapa. ');
+  var a=el('a','','Abrir no Google Maps');a.href='https://www.google.com/maps/search/?api=1&query='+lat+','+lng;a.target='_blank';a.rel='noopener';
+  p.append(a);m.append(p);
+}
+window.gm_authFailure=function(){console.warn('Mapa: o Google recusou a chave (referenciador, API não ativada ou faturamento). Veja o erro em vermelho acima.');mapFail()};   // o Google chama isto quando a chave é recusada (referenciador, API, faturamento)
+if(!okGeo)$('#map').hidden=true;
+
+/* Localização: só depois de um toque; se negar, abre a busca */
+function putUser(){
+  if(!map||!user)return;if(userMk)userMk.map=null;
+  userMk=new google.maps.marker.AdvancedMarkerElement({map:map,position:{lat:user.lat,lng:user.lng},content:el('div','me'),title:'Você está aqui',zIndex:900});
+}
+function openSearch(){$('#search').classList.add('open');$('#btnSearch').setAttribute('aria-expanded','true');$('#q').focus()}
+function closeSearch(){$('#search').classList.remove('open');$('#btnSearch').setAttribute('aria-expanded','false');$('#res').replaceChildren()}
+function onUser(){
+  var km=hav(user,{lat:lat,lng:lng});
+  $('#ctxText').textContent=km<0.3?'Você está bem perto de '+nome+'.':'Você está a '+(km<10?km.toFixed(1).replace('.',','):Math.round(km))+' km de '+nome+'.';
+  $('#btnLocate').hidden=true;say($('#ctxText').textContent);putUser();
+  // Entrou pela raiz (lugar escolhido pelo IP): o GPS troca para o ponto mais perto, uma única vez.
+  if(location.pathname==='/'){
+    api('/api/v1/explorar/pontos?lat='+user.lat.toFixed(3)+'&lng='+user.lng.toFixed(3)).then(function(d){
+      var n=(d.itens||[])[0];if(n&&n.slug&&n.slug!==slug)location.replace('/ponto/'+encodeURIComponent(n.slug))}).catch(function(){});
+  }
+  loadExplore({lat:user.lat,lng:user.lng},'Lugares perto de você');
+}
+function locate(){
+  if(!navigator.geolocation){$('#ctxText').textContent='Seu navegador não permite localização. Digite uma cidade ou um lugar.';openSearch();return}
+  $('#ctxText').textContent='Buscando sua localização…';
+  navigator.geolocation.getCurrentPosition(function(p){user={lat:p.coords.latitude,lng:p.coords.longitude};onUser()},function(){
+    $('#ctxText').textContent='Tudo bem. Digite uma cidade ou um lugar para ver o que há por perto.';openSearch()},{timeout:9000,maximumAge:300000});
+}
+$('#btnLocate').onclick=locate;
+$('#btnSearch').onclick=function(){$('#search').classList.contains('open')?closeSearch():openSearch()};
+$('#topSearch').onclick=function(){$('#ctx').scrollIntoView();openSearch()};
+// Se a permissão já foi dada antes, usa sem perguntar de novo.
+if(navigator.permissions&&navigator.permissions.query)navigator.permissions.query({name:'geolocation'}).then(function(r){if(r.state==='granted')locate()}).catch(function(){});
+
+/* Busca com sugestões */
+var q=$('#q'),res=$('#res'),tm=0,ctl=null;
+q.addEventListener('input',function(){clearTimeout(tm);var v=q.value.trim();if(v.length<2){res.replaceChildren();return}tm=setTimeout(function(){find(v)},250)});
+$('#search').addEventListener('keydown',function(e){
+  var it=[q].concat([].slice.call(res.querySelectorAll('a,button'))),i=it.indexOf(document.activeElement);
+  if(e.key==='ArrowDown'){e.preventDefault();it[Math.min(i+1,it.length-1)].focus()}
+  if(e.key==='ArrowUp'){e.preventDefault();it[Math.max(i-1,0)].focus()}
+  if(e.key==='Escape'){closeSearch();$('#btnSearch').focus()}});
+function find(v){
+  if(ctl)ctl.abort();ctl=new AbortController();
+  api('/api/v1/explorar/buscar?q='+encodeURIComponent(v),ctl.signal).then(function(d){
+    res.replaceChildren();
+    (d.pontos||[]).forEach(function(p){var li=el('li'),a=el('a','',p.nome);a.href='/ponto/'+encodeURIComponent(p.slug);
+      a.append(el('small','',[p.cidade,p.uf].filter(Boolean).join(' - ')));li.append(a);res.append(li)});
+    (d.cidades||[]).forEach(function(c){var li=el('li'),b=el('button','','Pontos turísticos em '+c.cidade);b.type='button';
+      b.append(el('small','',c.qtd+(c.qtd===1?' lugar':' lugares')));
+      b.onclick=function(){closeSearch();loadExplore({lat:+c.latitude,lng:+c.longitude},'Pontos turísticos em '+c.cidade);$('#explorar').scrollIntoView()};li.append(b);res.append(li)});
+    if(!res.children.length){var n=el('li','none','Nada encontrado para “'+v+'”. Tente outro nome.');res.append(n)}
+    say(res.children.length+' sugestões.');
+  }).catch(function(e){if(e.name!=='AbortError'){res.replaceChildren(el('li','none','A busca não respondeu. Tente de novo.'))}});
+}
+
+/* Explorar: pontos próximos ao local ou ao usuário */
+function loadExplore(src,title){
+  var ul=$('#spots');ul.setAttribute('aria-busy','true');
+  if(exCtl)exCtl.abort();exCtl=new AbortController();
+  $('#hExplorar').textContent=title||'Mais lugares para conhecer';
+  var url=src&&src.lat!=null?'/api/v1/explorar/pontos?lat='+src.lat.toFixed(2)+'&lng='+src.lng.toFixed(2):'/api/v1/ponto/'+encodeURIComponent(slug)+'/proximos';
+  api(url,exCtl.signal).then(function(d){
+    var it=(d.itens||[]).filter(function(i){return i.slug&&i.slug!==slug}).slice(0,8);
+    ul.replaceChildren();ul.setAttribute('aria-busy','false');
+    if(!it.length){ul.append(el('li','info','Ainda não há outros lugares cadastrados nesta região.'));return}
+    it.forEach(function(i){var li=el('li'),a=el('a');a.href='/ponto/'+encodeURIComponent(i.slug);
+      var ph=el('div','ph');if(safe(i.capa)){var im=new Image();im.src=safe(i.capa);im.alt='Foto de '+i.nome;im.loading='lazy';im.decoding='async';ph.append(im)}
+      a.append(ph,el('span','nm',i.nome||''),el('span','ct',i.categoria||''),el('span','ds','a '+dist(+i.distancia_km||0).replace(' a pé',' a pé')));
+      li.append(a);ul.append(li)});
+  }).catch(function(e){if(e.name!=='AbortError')retry(ul,function(){loadExplore(src,title)})});
+}
+
+/* Carrega cada bloco quando ele se aproxima da tela */
+var io=new IntersectionObserver(function(es,o){es.forEach(function(e){
+  if(!e.isIntersecting)return;o.unobserve(e.target);
+  if(e.target.id==='mapa')initMap();else if(!user)loadExplore(null)})},{rootMargin:'400px'});
+io.observe($('#mapa'));io.observe($('#explorar'));
+(window.requestIdleCallback||function(f){setTimeout(f,1)})(loadShops);
+})();
+</script>
+</body>
+</html>

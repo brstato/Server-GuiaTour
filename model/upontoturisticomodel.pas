@@ -734,15 +734,17 @@ begin
     raioMax := RAIO_BASE_KM + MAX_PLANO_DESTAQUE * RAIO_EXTRA_POR_NIVEL_KM;
     CalcularCaixa(lat, lng, raioMax, latMin, latMax, lngMin, lngMax);
 
+    //gkey:'AIzaSyA5M4yVTKwcI-vHz8qbE0yLiP6hfLCy8MM',mapId:'a49c24d7ae14e69f3d88399e'
+
     dataset := TGetData.getData(
       'WITH BASE AS (' +
       '  SELECT l.uuid, l.nome, l.slug, ' +
       '         COALESCE(l.plano_destaque, 0) AS plano_destaque, ' +
       '         c.nome AS categoria_nome, s.avatar, ' +
       '         l.latitude AS lat_c, l.longitude AS lng_c, ' +
-      '         (COS(RADIANS(:lat)) * COS(RADIANS(l.latitude)) * ' +
-      '          COS(RADIANS(l.longitude) - RADIANS(:lng)) + ' +
-      '          SIN(RADIANS(:lat)) * SIN(RADIANS(l.latitude))) AS cos_d ' +
+      '         (COS(CAST(:lat1 AS DOUBLE PRECISION) * 0.017453292519943295) * COS(l.latitude * 0.017453292519943295) * ' +
+      '          COS(l.longitude * 0.017453292519943295 - CAST(:lng AS DOUBLE PRECISION) * 0.017453292519943295) + ' +
+      '          SIN(CAST(:lat2 AS DOUBLE PRECISION) * 0.017453292519943295) * SIN(l.latitude * 0.017453292519943295)) AS cos_d ' +
       '  FROM loja l ' +
       '  JOIN categoria c ON c.id = l.id_categoria ' +
       '  LEFT JOIN site s ON s.id_loja_ex = l.uuid ' +
@@ -759,7 +761,7 @@ begin
       '  FROM BASE' +
       ') ' +
       'SELECT * FROM DIST ' +
-      'WHERE distancia_km <= (:raio_base + plano_destaque * :raio_extra) ' +
+      'WHERE distancia_km <= (CAST(:raio_base AS DOUBLE PRECISION) + plano_destaque * CAST(:raio_extra AS DOUBLE PRECISION)) ' +
       'ORDER BY plano_destaque DESC, distancia_km ASC ' +
       'ROWS :limite;',
       [
@@ -819,9 +821,9 @@ begin
     dataset := TGetData.getData(
       'WITH BASE AS (' +
       '  SELECT p.uuid, p.nome, p.slug, p.resumo, p.capa, c.nome AS categoria, ' +
-      '         (COS(RADIANS(:lat)) * COS(RADIANS(p.latitude)) * ' +
-      '          COS(RADIANS(p.longitude) - RADIANS(:lng)) + ' +
-      '          SIN(RADIANS(:lat)) * SIN(RADIANS(p.latitude))) AS cos_d ' +
+      '         (COS(CAST(:lat1 AS DOUBLE PRECISION) * 0.017453292519943295) * COS(p.latitude * 0.017453292519943295) * ' +
+      '          COS(p.longitude * 0.017453292519943295 - CAST(:lng AS DOUBLE PRECISION) * 0.017453292519943295) + ' +
+      '          SIN(CAST(:lat2 AS DOUBLE PRECISION) * 0.017453292519943295) * SIN(p.latitude * 0.017453292519943295)) AS cos_d ' +
       '  FROM ponto_turistico p ' +
       '  JOIN categoria_ponto_turistico c ON c.id = p.id_categoria ' +
       '  WHERE p.slug <> :slug_origem AND p.ativo = TRUE ' +
@@ -869,9 +871,9 @@ begin
     dataset := TGetData.getData(
       'WITH BASE AS (' +
       '  SELECT p.uuid, p.nome, p.slug, p.resumo, p.capa, c.nome AS categoria, ' +
-      '         (COS(RADIANS(:lat)) * COS(RADIANS(p.latitude)) * ' +
-      '          COS(RADIANS(p.longitude) - RADIANS(:lng)) + ' +
-      '          SIN(RADIANS(:lat)) * SIN(RADIANS(p.latitude))) AS cos_d ' +
+      '         (COS(CAST(:lat1 AS DOUBLE PRECISION) * 0.017453292519943295) * COS(p.latitude * 0.017453292519943295) * ' +
+      '          COS(p.longitude * 0.017453292519943295 - CAST(:lng AS DOUBLE PRECISION) * 0.017453292519943295) + ' +
+      '          SIN(CAST(:lat2 AS DOUBLE PRECISION) * 0.017453292519943295) * SIN(p.latitude * 0.017453292519943295)) AS cos_d ' +
       '  FROM ponto_turistico p ' +
       '  JOIN categoria_ponto_turistico c ON c.id = p.id_categoria ' +
       '  WHERE p.ativo = TRUE AND p.latitude IS NOT NULL AND p.longitude IS NOT NULL' +
@@ -882,7 +884,13 @@ begin
       '  FROM BASE' +
       ') ' +
       'SELECT * FROM DIST WHERE distancia_km <= :raio ORDER BY distancia_km ASC ROWS :limite;',
-      [lat, lng, lat, raioKm, limite],
+      [
+        lat,
+        lng,
+        lat,
+        raioKm,
+        limite
+      ],
       True
     );
 

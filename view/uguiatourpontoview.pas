@@ -186,7 +186,7 @@ var
 begin
   Tpl := TStringList.Create;
   try
-    Tpl.LoadFromFile(ExtractFilePath(ParamStr(0)) + 'guiatour.html');
+    Tpl.LoadFromFile(ExtractFilePath(ParamStr(0)) + 'templates/ponto.html');
     Result := RenderTemplate(Tpl.Text, Ponto, Slug);
   finally
     Tpl.Free;

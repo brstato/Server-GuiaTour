@@ -17,7 +17,9 @@ uses
   LazJWT,
   StrUtils,
   usecurityservice,
-  uconfig;
+  uconfig,
+  upontoturisticomodel,
+  uguiatourpontoview;
 
 type
 
@@ -31,6 +33,52 @@ type
 implementation
 
 { TPortifolioController }
+
+procedure ServirHome(req: THorseRequest; res: THorseResponse);
+var
+  fs: TFormatSettings;
+  lat, lng: Double;
+  arr: TJSONArray;
+  ponto: TJSONObject;
+  slugPonto: string;
+begin
+  ponto := nil;
+  arr := nil;
+  try
+    fs := DefaultFormatSettings;
+    fs.DecimalSeparator := '.';
+    lat := StrToFloatDef(Trim(req.Headers['CF-IPLatitude']),  0, fs);
+    lng := StrToFloatDef(Trim(req.Headers['CF-IPLongitude']), 0, fs);
+
+    if (lat = 0) and (lng = 0) then
+    begin
+      TJsonView.SendHtml(res, 404, '<h1>Não foi possível identificar sua localização.</h1>');
+      Exit;
+    end;
+
+    // ponto turístico mais próximo (50 km)
+    arr := TPontoTuristicoModel.GetPontosPorGPS(lat, lng, 50, 1);
+    if (arr.Count = 0) or (arr.Items[0].JSONType <> jtObject) then
+    begin
+      TJsonView.SendHtml(res, 404, '<h1>Ainda não há pontos turísticos perto de você.</h1>');
+      Exit;
+    end;
+    slugPonto := TJSONObject(arr.Items[0]).Get('slug', '');
+
+    ponto := TPontoTuristicoModel.GetBySlug(slugPonto);
+    if not Assigned(ponto) then
+    begin
+      TJsonView.SendHtml(res, 404, '<h1>Ponto turístico não encontrado.</h1>');
+      Exit;
+    end;
+
+    res.AddHeader('Cache-Control', 'private, no-cache');
+    TJsonView.SendHtml(res, 200, TPontoView.Render(ponto, slugPonto));
+  finally
+    arr.Free;
+    ponto.Free;
+  end;
+end;
 
 function verifica_slug(const slug: string): Boolean;
 const
@@ -58,7 +106,7 @@ var
   Slug, HostStr: string;
   PosPonto: Integer;
   Perfil: TComercioPerfil;
-  HTMLFinal: string;
+  HTMLFinal, lat, lng, cidade: string;
 begin
   if not req.Params.TryGetValue('slug', slug) then Slug := '';
 
@@ -69,11 +117,11 @@ begin
     if (HostStr = 'guiatour.online') or (HostStr = 'www.guiatour.online') or
        (HostStr.StartsWith('api.')) then
     begin
-      TJsonView.SendHtml(
-        res,
-        404,
-        '<h1>Página inicial do Guiatour (em construção)</h1>'
-      );
+      lat := Req.Headers['CF-IPLatitude'];
+      lng := Req.Headers['CF-IPLongitude'];
+      cidade := Req.Headers['CF-IPCity'];
+
+      ServirHome(req, res);
       Exit;
     end;
 
