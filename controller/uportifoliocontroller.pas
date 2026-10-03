@@ -58,11 +58,7 @@ begin
 
     // ponto turístico mais próximo (50 km)
     arr := TPontoTuristicoModel.GetPontosPorGPS(lat, lng, 50, 1);
-    if (arr.Count = 0) or (arr.Items[0].JSONType <> jtObject) then
-    begin
-      TJsonView.SendHtml(res, 404, '<h1>Ainda não há pontos turísticos perto de você.</h1>');
-      Exit;
-    end;
+
     slugPonto := TJSONObject(arr.Items[0]).Get('slug', '');
 
     ponto := TPontoTuristicoModel.GetBySlug(slugPonto);

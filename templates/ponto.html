@@ -130,10 +130,16 @@ dialog::backdrop{background:rgba(15,23,42,.94)}
 .shops>li[aria-current=true]{border-color:var(--azul);box-shadow:0 0 0 3px rgba(37,99,235,.18)}
 .shops>li.info{flex:1;padding:8px 0;border:0;background:none;box-shadow:none;color:var(--mudo)}
 .pick{display:flex;gap:12px;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.av,.pin{text-transform:uppercase}
 .av{flex:none;display:grid;place-items:center;width:64px;height:64px;border:1px solid var(--azul-borda);border-radius:14px;background:var(--azul-suave);color:var(--azul);font-size:1.4rem;font-weight:700;object-fit:cover}
 .nm{display:block;font-size:1.02rem;font-weight:700;line-height:1.25;letter-spacing:-.01em}
 .ct{display:inline-block;margin:4px 0;padding:1px 9px;border:1px solid var(--azul-borda);border-radius:999px;background:var(--azul-suave);color:var(--azul-h);font-size:.78rem;font-weight:600}
 .ds{display:block;color:var(--mudo);font-size:.88rem;font-weight:500}
+.rate{display:flex;align-items:center;gap:6px;margin:0 0 4px;color:var(--ink2);font-size:.85rem;font-weight:600}
+.stars{--p:0%;position:relative;display:inline-block;color:#cbd5e1;font-size:1rem;line-height:1;white-space:nowrap}
+.stars::before{content:"★★★★★"}
+.stars::after{content:"★★★★★";position:absolute;inset:0 auto 0 0;width:var(--p);overflow:hidden;color:#f59e0b}
+.rate small{color:var(--mudo);font-size:.8rem;font-weight:500}
 .tag{margin-left:.5em;padding:.12em .6em;border-radius:999px;background:var(--azul);color:#fff;font-size:.72rem;font-weight:700;white-space:nowrap;vertical-align:middle}
 .act{display:flex;gap:8px;margin-top:12px}
 .act .btn{flex:1;min-height:40px;padding:.55em .8em;font-size:.88rem}
@@ -209,10 +215,10 @@ footer{padding:28px 0 40px;border-top:1px solid var(--linha);color:var(--mudo);f
     </div>
   </section>
 
-  <section class="gal" id="gal" aria-labelledby="hFotos" hidden>
+  <section class="gal" id="gal" aria-labelledby="hFotos" {{GAL_HIDDEN}}>
     <div class="wrap">
       <h2 id="hFotos">Fotos</h2>
-      <div class="grid" id="grid"></div>
+      <div class="grid" id="grid">{{PONTO_GALERIA_HTML}}</div>
     </div>
   </section>
 
@@ -224,7 +230,7 @@ footer{padding:28px 0 40px;border-top:1px solid var(--linha);color:var(--mudo);f
         <div id="map" role="region" aria-label="Mapa com o ponto turístico e os comércios">
           <noscript><p>Ative o JavaScript para ver o mapa e os comércios por perto.</p></noscript>
         </div>
-        <ul class="shops" id="shops" aria-busy="true"><li class="info">Carregando comércios…</li></ul>
+        <ul class="shops" id="shops" aria-busy="false">{{COMERCIOS_HTML}}</ul>
       </div>
     </div>
   </section>
@@ -232,7 +238,7 @@ footer{padding:28px 0 40px;border-top:1px solid var(--linha);color:var(--mudo);f
   <section class="more-sec" id="explorar" aria-labelledby="hExplorar">
     <div class="wrap">
       <h2 id="hExplorar">Mais lugares para conhecer</h2>
-      <ul class="spots" id="spots" aria-busy="true"></ul>
+      <ul class="spots" id="spots" aria-busy="false">{{PONTOS_PROXIMOS_HTML}}</ul>
     </div>
   </section>
 </main>
@@ -289,7 +295,9 @@ else{more.hidden=false;more.onclick=function(){var open=hist.classList.toggle('c
 var G=(P.galeria||[]).map(function(g){return safe(g.url)}).filter(Boolean),lb=$('#lb'),lbi=$('#lbi'),cur=0,sx=0;
 function show(i){cur=(i+G.length)%G.length;lbi.src=G[cur];lbi.alt='Foto '+(cur+1)+' de '+nome;$('#lbn').textContent=(cur+1)+' / '+G.length}
 if(G.length){
-  G.slice(0,7).forEach(function(u,i){var b=el('button');b.type='button';b.setAttribute('aria-label','Ampliar foto '+(i+1));
+  var tiles=document.querySelectorAll('#grid button');
+  if(tiles.length){tiles.forEach(function(b,i){b.onclick=function(){show(i);lb.showModal()}})}   // fotos já vieram no HTML
+  else G.slice(0,7).forEach(function(u,i){var b=el('button');b.type='button';b.setAttribute('aria-label','Ampliar foto '+(i+1));
     var im=new Image();im.src=u;im.alt='Foto '+(i+1)+' de '+nome;im.loading='lazy';im.decoding='async';b.append(im);
     if(i===6&&G.length>7)b.append(el('span','more','+'+(G.length-7)));
     b.onclick=function(){show(i);lb.showModal()};$('#grid').append(b)});
@@ -325,7 +333,14 @@ function renderShops(){
     if(av.tagName==='IMG')av.addEventListener('error',function(){av.replaceWith(el('span','av',ini))});
     var tx=el('span');var nm=el('span','nm',s.nome||'');
     if(s.destacado)nm.append(el('span','tag','Destaque'));
-    tx.append(nm,el('span','ct',s.categoria||''),el('span','ds',dist(+s.distancia_km||0)));
+    tx.append(nm,el('span','ct',s.categoria||''));
+    // Estrelas só quando há avaliações aprovadas (a API manda nota_media e total_avaliacoes)
+    var tot=+s.total_avaliacoes||0,nota=Math.min(5,Math.max(0,+s.nota_media||0));
+    if(tot>0){var rt=el('span','rate'),st=el('span','stars'),nt=nota.toFixed(1).replace('.',',');
+      st.style.setProperty('--p',(nota/5*100).toFixed(0)+'%');st.setAttribute('role','img');
+      st.setAttribute('aria-label','Nota '+nt+' de 5, '+tot+(tot===1?' avaliação':' avaliações'));
+      rt.append(st,document.createTextNode(nt),el('small','','('+tot+')'));tx.append(rt)}
+    tx.append(el('span','ds',dist(+s.distancia_km||0)));
     pick.append(av,tx);
     pick.onclick=function(){select(s.uuid);track('card',s.slug)};
     var act=el('div','act');
@@ -342,7 +357,7 @@ function loadShops(){
   api('/api/v1/ponto/'+encodeURIComponent(slug)+'/comercios-proximos').then(function(d){
     shops=(d.itens||[]).filter(function(s){return s.slug&&s.uuid});renderShops();
     say(shops.length?shops.length+' comércios por perto.':'Nenhum comércio cadastrado por perto.');
-  }).catch(function(){retry(ul,function(){ul.setAttribute('aria-busy','true');loadShops()})});
+  }).catch(function(){if(!ul.querySelector('li[data-id]'))retry(ul,function(){ul.setAttribute('aria-busy','true');loadShops()})});
 }
 
 /* Mapa do Google (carregado só quando a seção se aproxima) */
@@ -458,7 +473,7 @@ function loadExplore(src,title){
 /* Carrega cada bloco quando ele se aproxima da tela */
 var io=new IntersectionObserver(function(es,o){es.forEach(function(e){
   if(!e.isIntersecting)return;o.unobserve(e.target);
-  if(e.target.id==='mapa')initMap();else if(!user)loadExplore(null)})},{rootMargin:'400px'});
+  if(e.target.id==='mapa')initMap();else if(!user&&!$('#spots').children.length)loadExplore(null)})},{rootMargin:'400px'});
 io.observe($('#mapa'));io.observe($('#explorar'));
 (window.requestIdleCallback||function(f){setTimeout(f,1)})(loadShops);
 })();
