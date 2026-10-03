@@ -15,7 +15,7 @@ uses
   uTlogincontroller, utlojacontroller, uportifoliocontroller, uloginmodel,
   ulojamodel, uportifoliomodel, uvendedormodel, Horse, utvendedorcontroller,
   utPontoscontroller, utguiatourpublicocontroller, upontoturisticomodel,
-  ubuscamodel, ueventomodel
+  ubuscamodel, ueventomodel, uguiatourseo
   ;
 
 type

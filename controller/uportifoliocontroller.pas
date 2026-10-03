@@ -480,83 +480,6 @@ begin
   end;
 end;
 
-procedure HandlerRobotsGet(req: THorseRequest; res: THorseResponse;
-  next: TNextProc);
-var
-  HostStr, RobotsStr: string;
-begin
-  HostStr := req.Headers['Host'];
-
-  RobotsStr := 'User-agent: *' + sLineBreak +
-               'Allow: /' + sLineBreak +
-               'Sitemap: https://' + HostStr + '/sitemap.xml';
-
-  TJsonView.SendText(res, 200, RobotsStr);
-end;
-
-procedure HandlerSitemapGet(req: THorseRequest; res: THorseResponse; next: TNextProc);
-var
-  HostStr, Slug, XMLStr, UrlFotoAbsoluta: string;
-  PosPonto, i: Integer;
-  Perfil: TComercioPerfil;
-begin
-  HostStr := req.Headers['Host'];
-  PosPonto := Pos('.', HostStr);
-
-  if PosPonto > 0 then
-    Slug := Copy(HostStr, 1, PosPonto - 1)
-  else
-    Slug := HostStr;
-
-  if verifica_slug(Slug) then
-  begin
-    TJsonView.SendHtml(res, 404, 'Not found');
-    Exit;
-  end;
-
-  try
-    Perfil := TProtifolioModel.GetBySlug(Slug);
-    if not Perfil.Encontrado then
-    begin
-      TJsonView.SendHtml(res, 404, 'Not found');
-      Exit;
-    end;
-
-    // Cabeçalho XML com suporte a imagens
-    XMLStr := '<?xml version="1.0" encoding="UTF-8"?>' + sLineBreak +
-              '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" ' +
-              'xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">' + sLineBreak;
-
-    // URL da página do artista
-    XMLStr := XMLStr + '  <url>' + sLineBreak +
-                       '    <loc>https://' + HostStr + '/</loc>' + sLineBreak +
-                       '    <changefreq>weekly</changefreq>' + sLineBreak +
-                       '    <priority>1.0</priority>' + sLineBreak;
-
-    // Loop inserindo as fotos do portfólio no sitemap
-    for i := 0 to High(Perfil.FotosGaleria) do
-    begin
-      UrlFotoAbsoluta := Perfil.FotosGaleria[i];
-      if Pos('/', UrlFotoAbsoluta) <> 1 then UrlFotoAbsoluta := '/' + UrlFotoAbsoluta;
-      UrlFotoAbsoluta := 'https://' + HostStr + UrlFotoAbsoluta;
-
-      XMLStr := XMLStr + '    <image:image>' + sLineBreak +
-                         '      <image:loc>' + UrlFotoAbsoluta + '</image:loc>' + sLineBreak +
-                         '      <image:title>Tatuagem por ' + Perfil.Titulo + '</image:title>' + sLineBreak +
-                         '    </image:image>' + sLineBreak;
-    end;
-
-    XMLStr := XMLStr + '  </url>' + sLineBreak +
-                       '</urlset>';
-
-    res.ContentType('application/xml; charset=utf-8').Send(XMLStr);
-  except
-    on E: Exception do
-      TJsonView.SendHtml(res, 500, 'Internal Server Error');
-  end;
-end;
-
-
 procedure HandlePortifolioUpdateBasico(req: THorseRequest; res: THorseResponse;
   next: TNextProc);
 var
@@ -825,9 +748,6 @@ begin
   THorse.Get('/loja/:slug', HandlerPortifolioGet);
   THorse.get('/', HandlerPortifolioGet);
 
-  THorse.Get('/robots.txt', HandlerRobotsGet);
-  THorse.Get('/sitemap.xml', HandlerSitemapGet);
-
   THorse.AddCallback(HorseJWT(TConfig.Token))
     .Post('api/v1/portfolio/upload', HandleUploadFoto);
 
@@ -841,4 +761,3 @@ begin
 end;
 
 end.
-

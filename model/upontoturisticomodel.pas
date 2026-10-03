@@ -769,7 +769,8 @@ begin
       '  LEFT JOIN (SELECT d.id_loja, AVG(CAST(d.nota AS DOUBLE PRECISION)) AS nota_media, COUNT(*) AS total_avaliacoes ' +
       '             FROM depoimentos d WHERE d.status = ''aprovado'' GROUP BY d.id_loja) a ON a.id_loja = l.uuid ' +
       '  WHERE l.latitude IS NOT NULL AND l.longitude IS NOT NULL ' +
-      '    AND l.validade >= CURRENT_DATE' +
+      '    AND l.validade >= CURRENT_DATE ' +
+      '    AND COALESCE(c.ativa, TRUE) = TRUE' +
       '), DIST AS (' +
       '  SELECT b.uuid, b.id_categoria, b.nome, b.slug, b.plano_destaque, b.categoria_nome, b.avatar, ' +
       '         b.nota_media, b.total_avaliacoes, b.lat_c, b.lng_c, ' +

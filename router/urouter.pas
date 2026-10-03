@@ -33,7 +33,6 @@ end;
 
 class procedure tAppRouter.load_routes();
 begin
-    THorse.Get('/', onStatus);
     TLoginController.RegisterRoutes;
     TlojaController.RegisterRoutes;
     TPortifolioController.RegisterRoutes;

@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, StrUtils, Horse, fpjson, jsonparser, uJsonView,
   uguiatourutils, uratelimit, uguiatourpontoview,
-  upontoturisticomodel, ubuscamodel, ueventomodel;
+  upontoturisticomodel, ubuscamodel, ueventomodel, uguiatourseo;
 
 type
 
@@ -131,6 +131,58 @@ begin
   end;
 end;
 
+// GET /robots.txt
+procedure HandlerRobots(Req: THorseRequest; Res: THorseResponse; Next: TNextProc);
+begin
+  Res.AddHeader('Cache-Control', 'public, max-age=3600');
+  TJsonView.SendText(Res, 200, TGuiaTourSeo.Robots(Req.Headers['Host']));
+end;
+
+// Sitemaps (XML). O host api.* não publica sitemap.
+procedure EnviarSitemap(Req: THorseRequest; Res: THorseResponse; Tipo: Integer);
+var
+  xml: string;
+begin
+  try
+    if Pos('api.', LowerCase(Trim(Req.Headers['Host']))) = 1 then
+    begin
+      TJsonView.SendText(Res, 404, 'Not found');
+      Exit;
+    end;
+
+    case Tipo of
+      0: xml := TGuiaTourSeo.SitemapIndex;
+      1: xml := TGuiaTourSeo.SitemapPontos;
+    else
+      xml := TGuiaTourSeo.SitemapLojas;
+    end;
+
+    Res.AddHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
+    Res.Status(200).ContentType('application/xml; charset=utf-8').Send(xml);
+  except
+    on E: Exception do
+    begin
+      WriteLn('Erro em: Sitemap - ' + E.Message);
+      TJsonView.SendText(Res, 500, 'Erro interno.');
+    end;
+  end;
+end;
+
+procedure HandlerSitemapIndex(Req: THorseRequest; Res: THorseResponse; Next: TNextProc);
+begin
+  EnviarSitemap(Req, Res, 0);
+end;
+
+procedure HandlerSitemapPontos(Req: THorseRequest; Res: THorseResponse; Next: TNextProc);
+begin
+  EnviarSitemap(Req, Res, 1);
+end;
+
+procedure HandlerSitemapLojas(Req: THorseRequest; Res: THorseResponse; Next: TNextProc);
+begin
+  EnviarSitemap(Req, Res, 2);
+end;
+
 { TGuiaTourPublicoController }
 
 class procedure TGuiaTourPublicoController.RegisterRoutes();
@@ -138,6 +190,10 @@ begin
   THorse.Get('api/v1/explorar/buscar', HandlerBuscar);
   THorse.Get('/ponto/:slug', HandlerPaginaPonto);
   THorse.Post('api/v1/evento', HandlerEvento);
+  THorse.Get('/robots.txt', HandlerRobots);
+  THorse.Get('/sitemap.xml', HandlerSitemapIndex);
+  THorse.Get('/sitemap-pontos.xml', HandlerSitemapPontos);
+  THorse.Get('/sitemap-lojas.xml', HandlerSitemapLojas);
 end;
 
 end.

@@ -131,6 +131,10 @@
         <Filename Value="controller/utguiatourpublicocontroller.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="service/uguiatourseo.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
