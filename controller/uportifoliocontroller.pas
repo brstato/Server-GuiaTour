@@ -52,12 +52,12 @@ begin
 
     if (lat = 0) and (lng = 0) then
     begin
-      TJsonView.SendHtml(res, 404, '<h1>Não foi possível identificar sua localização.</h1>');
-      Exit;
+      lat := -23.0067;
+      lng := -44.3181;
     end;
 
     // ponto turístico mais próximo (50 km)
-    arr := TPontoTuristicoModel.GetPontosPorGPS(lat, lng, 50, 1);
+    arr := TPontoTuristicoModel.GetPontosPorGPS(lat, lng, 20000, 1);
 
     slugPonto := TJSONObject(arr.Items[0]).Get('slug', '');
 

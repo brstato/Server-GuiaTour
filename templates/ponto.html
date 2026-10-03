@@ -50,19 +50,37 @@ svg.i{flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:roun
 .chip{display:inline-block;padding:1px 9px;border:1px solid var(--azul-borda);border-radius:999px;background:var(--azul-suave);color:var(--azul-h);font-size:.78rem;font-weight:600}
 
 /* Capa */
-.hero{position:relative;display:flex;align-items:flex-end;min-height:440px;height:80vh;height:80svh;max-height:780px;overflow:hidden;border-radius:0 0 28px 28px;color:#fff;background:linear-gradient(135deg,#2563eb,#0f172a)}
-.hero>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:settle 1.8s cubic-bezier(.2,.7,.2,1) both}
-.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(15,23,42,.9),rgba(15,23,42,.4) 45%,rgba(15,23,42,0) 72%),linear-gradient(to bottom,rgba(15,23,42,.4),transparent 24%)}
+.hero{position:relative;min-height:440px;height:80vh;height:80svh;max-height:780px;overflow:hidden;border-radius:0 0 28px 28px;color:#fff;background:linear-gradient(135deg,#2563eb,#0f172a)}
+/* Capa em carrossel: um slide por ponto turístico (o primeiro é o ponto da página, com o h1) */
+.hslides{position:absolute;inset:0;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none}
+.hslides::-webkit-scrollbar{display:none}
+.hslides:focus-visible{outline-offset:-4px}
+.hs{position:relative;flex:0 0 100%;display:flex;align-items:flex-end;overflow:hidden;scroll-snap-align:start;scroll-snap-stop:always}
+.hs>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.hs:first-child>img{animation:settle 1.8s cubic-bezier(.2,.7,.2,1) both}
+.hs::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(15,23,42,.9),rgba(15,23,42,.4) 45%,rgba(15,23,42,0) 72%),linear-gradient(to bottom,rgba(15,23,42,.4),transparent 24%)}
 .bar{position:absolute;z-index:2;inset:12px 12px auto;display:flex;justify-content:space-between;align-items:center;padding:8px 8px 8px 12px;border:1px solid rgba(255,255,255,.6);border-radius:14px;background:rgba(255,255,255,.84);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:var(--ink);box-shadow:0 1px 2px rgba(15,23,42,.08)}
 .brand{display:flex;align-items:center;gap:10px;font-size:.82rem;font-weight:800;letter-spacing:-.01em;text-transform:uppercase;text-decoration:none}
 .brand i{display:grid;place-items:center;width:32px;height:32px;border:1px solid #dbeafe;border-radius:10px;background:var(--azul-suave);color:var(--azul)}
 .bar .btn{min-height:36px;padding:.4em .9em;font-size:.85rem}
-.hero .wrap{position:relative;z-index:1;padding-bottom:46px}
-.hero .wrap>*{animation:rise .9s cubic-bezier(.2,.7,.2,1) both}
-.hero .wrap>:nth-child(1){animation-delay:.45s}.hero .wrap>:nth-child(2){animation-delay:.6s}.hero .wrap>:nth-child(3){animation-delay:.75s}
+.hs-txt{position:relative;z-index:1;padding-bottom:76px}
+.hs:first-child .hs-txt>*{animation:rise .9s cubic-bezier(.2,.7,.2,1) both}
+.hs:first-child .hs-txt>:nth-child(1){animation-delay:.45s}.hs:first-child .hs-txt>:nth-child(2){animation-delay:.6s}.hs:first-child .hs-txt>:nth-child(3){animation-delay:.75s}
+.ttl a{text-decoration:none}.ttl a:hover{text-decoration:underline;text-underline-offset:.12em}
+.hs-txt .btn{display:flex;width:max-content;margin-top:18px}
+.btn.load{opacity:.7;pointer-events:none}
+.hnav{position:absolute;z-index:2;right:16px;bottom:18px;display:flex;align-items:center;gap:6px;padding:6px;border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(15,23,42,.38);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.hb{display:none;width:36px;height:36px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;font-size:1.4rem;line-height:1;cursor:pointer}
+.hb:hover:not(:disabled){background:rgba(255,255,255,.34)}
+.hb:disabled{opacity:.35;cursor:default}
+.hdots{display:flex}
+.hd{display:grid;place-items:center;width:22px;height:32px;padding:0;border:0;background:none;cursor:pointer}
+.hd::before{content:"";width:8px;height:8px;border-radius:999px;background:rgba(255,255,255,.5);transition:width .25s,background .25s}
+.hd[aria-current]::before{width:20px;background:#fff}
+@media(min-width:640px){.hb{display:block}.hnav{right:24px;bottom:24px}}
 .cat{display:inline-block;padding:.3em .9em;border:1px solid rgba(255,255,255,.4);border-radius:999px;background:rgba(255,255,255,.16);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);font-size:.88rem;font-weight:500}
 .cat:empty{display:none}
-h1{margin:.4em 0 .25em;max-width:16ch;font-size:clamp(2.4rem,8.5vw,4.8rem);font-weight:800;line-height:1.03;letter-spacing:-.035em;text-wrap:balance}
+h1,.ttl{margin:.4em 0 .25em;max-width:16ch;font-size:clamp(2.4rem,8.5vw,4.8rem);font-weight:800;line-height:1.03;letter-spacing:-.035em;text-wrap:balance}
 .where{display:flex;align-items:center;gap:.45em;font-size:1.05rem;font-weight:500;color:rgba(255,255,255,.92)}
 @keyframes settle{from{transform:scale(1.07)}to{transform:scale(1)}}
 @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
@@ -97,19 +115,22 @@ h1{margin:.4em 0 .25em;max-width:16ch;font-size:clamp(2.4rem,8.5vw,4.8rem);font-
 .nearlink:hover{color:var(--azul-h);text-decoration:underline}
 @media(min-width:860px){.story .wrap{grid-template-columns:5fr 7fr;gap:64px}}
 
-/* Galeria */
+/* Galeria: carrossel com autoplay (todas as fotos continuam no HTML) */
 .gal{padding:40px 0 8px}
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-.grid button{position:relative;padding:0;border:1px solid var(--linha);border-radius:16px;overflow:hidden;aspect-ratio:1;background:var(--linha);cursor:zoom-in}
-.grid button:first-child{grid-column:span 2;aspect-ratio:16/10}
+.grid{display:flex;gap:12px;padding:4px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:4px;overscroll-behavior-x:contain;scrollbar-width:none}
+.grid::-webkit-scrollbar{display:none}
+.grid button{position:relative;flex:0 0 min(84%,480px);aspect-ratio:4/3;padding:0;border:1px solid var(--linha);border-radius:16px;overflow:hidden;background:var(--linha);cursor:zoom-in;scroll-snap-align:start}
 .grid img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
 .grid button:hover img{transform:scale(1.04)}
-.grid .more{position:absolute;inset:0;display:grid;place-items:center;background:rgba(15,23,42,.55);color:#fff;font-size:1.6rem;font-weight:700}
-@media(min-width:760px){.grid{grid-template-columns:repeat(4,1fr)}.grid button:first-child{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}}
+.grid .more{display:none}
+@media(min-width:760px){.grid button{flex-basis:calc((100% - 24px)/3)}}
 dialog{width:100%;height:100%;max-width:100vw;max-height:100vh;padding:0;border:0;background:transparent;color:#fff}
 dialog::backdrop{background:rgba(15,23,42,.94)}
+dialog,.lb{touch-action:pan-y}
 .lb{position:relative;display:grid;place-items:center;height:100%}
-.lb img{max-width:94vw;max-height:82vh;object-fit:contain;border-radius:12px}
+.lb img{max-width:94vw;max-height:82vh;object-fit:contain;border-radius:12px;-webkit-user-drag:none;user-select:none;-webkit-user-select:none;will-change:transform,opacity}
+dialog[open],dialog[open]::backdrop{animation:lbfade .25s ease-out}
+@keyframes lbfade{from{opacity:0}}
 .lb button{position:absolute;width:48px;height:48px;border:0;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font-size:1.5rem;cursor:pointer}
 .lb button:hover{background:rgba(255,255,255,.3)}
 #lbx{top:14px;right:14px}#lbp{left:12px;top:50%}#lbf{right:12px;top:50%}
@@ -174,16 +195,25 @@ footer{padding:28px 0 40px;border-top:1px solid var(--linha);color:var(--mudo);f
 <a class="skip" href="#historia">Ir para o conteúdo</a>
 <div id="live" class="sr" role="status" aria-live="polite"></div>
 
-<header class="hero">
-  <img src="{{PONTO_CAPA_URL}}" alt="Foto de {{PONTO_NOME}}" fetchpriority="high" decoding="async">
+<header class="hero" id="hero">
+  <div class="hslides" id="hslides" tabindex="0" role="group" aria-roledescription="carousel" aria-label="Pontos turísticos">
+    <div class="hs" data-slug="{{PONTO_SLUG}}" role="group" aria-roledescription="slide">
+      <img src="{{PONTO_CAPA_URL}}" alt="Foto de {{PONTO_NOME}}" fetchpriority="high" decoding="async">
+      <div class="wrap hs-txt">
+        <p class="cat">{{PONTO_CATEGORIA}}</p>
+        <h1>{{PONTO_NOME}}</h1>
+        <p class="where"><svg class="i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg><span>{{PONTO_CIDADE}}</span></p>
+      </div>
+    </div>
+  </div>
   <nav class="bar" aria-label="Principal">
     <a class="brand" href="/"><i><svg class="i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg></i>Guia Tour</a>
     <button class="btn alt" id="topSearch" type="button"><svg class="i" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>Buscar outro lugar</button>
   </nav>
-  <div class="wrap">
-    <p class="cat">{{PONTO_CATEGORIA}}</p>
-    <h1>{{PONTO_NOME}}</h1>
-    <p class="where"><svg class="i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg><span>{{PONTO_CIDADE}}</span></p>
+  <div class="hnav" id="hnav" hidden>
+    <button class="hb" id="hprev" type="button" aria-label="Ponto turístico anterior">‹</button>
+    <div class="hdots" id="hdots"></div>
+    <button class="hb" id="hnext" type="button" aria-label="Próximo ponto turístico">›</button>
   </div>
 </header>
 
@@ -218,7 +248,7 @@ footer{padding:28px 0 40px;border-top:1px solid var(--linha);color:var(--mudo);f
   <section class="gal" id="gal" aria-labelledby="hFotos" {{GAL_HIDDEN}}>
     <div class="wrap">
       <h2 id="hFotos">Fotos</h2>
-      <div class="grid" id="grid">{{PONTO_GALERIA_HTML}}</div>
+      <div class="grid" id="grid" role="group" aria-label="Carrossel de fotos" aria-live="off">{{PONTO_GALERIA_HTML}}</div>
     </div>
   </section>
 
@@ -264,10 +294,16 @@ footer{padding:28px 0 40px;border-top:1px solid var(--linha);color:var(--mudo);f
 var CFG={gkey:'AIzaSyA5M4yVTKwcI-vHz8qbE0yLiP6hfLCy8MM',mapId:'a49c24d7ae14e69f3d88399e',mpm:80};
 var $=function(s){return document.querySelector(s)};
 function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
-var P={};try{P=JSON.parse($('#ponto-data').textContent)||{}}catch(e){}
-var slug=document.body.dataset.slug,nome=P.nome||'',lat=+P.latitude,lng=+P.longitude;
-var okGeo=isFinite(lat)&&isFinite(lng)&&(lat||lng);
-var shops=[],markers={},map=null,user=null,userMk=null,exCtl=null;
+var P={},slug='',nome='',lat=NaN,lng=NaN,okGeo=false;
+// Lê o ponto atual do HTML. Roda de novo quando o "+ info" troca o ponto sem recarregar a página.
+function readState(){
+  P={};try{P=JSON.parse($('#ponto-data').textContent)||{}}catch(e){}
+  slug=document.body.dataset.slug;nome=P.nome||'';lat=+P.latitude;lng=+P.longitude;
+  okGeo=isFinite(lat)&&isFinite(lng)&&!!(lat||lng);
+}
+readState();
+var shops=[],markers={},map=null,user=null,userMk=null,mainMk=null,exCtl=null;
+var PIN='<svg class="i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>';
 
 function safe(u){return typeof u==='string'&&/^(\/(?!\/)|https?:\/\/)/.test(u)?u:''}
 function say(t){$('#live').textContent=t}
@@ -281,33 +317,156 @@ function track(tipo,loja){try{var b=JSON.stringify({tipo:tipo,loja:loja,ponto:sl
   if(navigator.sendBeacon)navigator.sendBeacon('/api/v1/evento',new Blob([b],{type:'application/json'}));
   else fetch('/api/v1/evento',{method:'POST',body:b,keepalive:true,headers:{'Content-Type':'application/json'}})}catch(e){}}
 
-/* Capa sem foto: o degradê do fundo assume */
-var hi=$('.hero>img');
-if(!hi.getAttribute('src'))hi.remove();else hi.addEventListener('error',function(){hi.remove()});
-
 /* História: recolhida só se for longa; o texto completo fica no HTML */
-var hist=$('#hist'),more=$('#more');
-hist.classList.add('clamp');
-if(hist.scrollHeight<=hist.clientHeight+8)hist.classList.remove('clamp');
-else{more.hidden=false;more.onclick=function(){var open=hist.classList.toggle('clamp')===false;more.setAttribute('aria-expanded',open);more.textContent=open?'Mostrar menos':'Ler história completa'}}
-
-/* Galeria e lightbox */
-var G=(P.galeria||[]).map(function(g){return safe(g.url)}).filter(Boolean),lb=$('#lb'),lbi=$('#lbi'),cur=0,sx=0;
-function show(i){cur=(i+G.length)%G.length;lbi.src=G[cur];lbi.alt='Foto '+(cur+1)+' de '+nome;$('#lbn').textContent=(cur+1)+' / '+G.length}
-if(G.length){
-  var tiles=document.querySelectorAll('#grid button');
-  if(tiles.length){tiles.forEach(function(b,i){b.onclick=function(){show(i);lb.showModal()}})}   // fotos já vieram no HTML
-  else G.slice(0,7).forEach(function(u,i){var b=el('button');b.type='button';b.setAttribute('aria-label','Ampliar foto '+(i+1));
-    var im=new Image();im.src=u;im.alt='Foto '+(i+1)+' de '+nome;im.loading='lazy';im.decoding='async';b.append(im);
-    if(i===6&&G.length>7)b.append(el('span','more','+'+(G.length-7)));
-    b.onclick=function(){show(i);lb.showModal()};$('#grid').append(b)});
-  $('#gal').hidden=false;
-  $('#lbx').onclick=function(){lb.close()};$('#lbp').onclick=function(){show(cur-1)};$('#lbf').onclick=function(){show(cur+1)};
-  lb.addEventListener('keydown',function(e){if(e.key==='ArrowLeft')show(cur-1);if(e.key==='ArrowRight')show(cur+1)});
-  lb.addEventListener('click',function(e){if(e.target===lb||e.target.className==='lb')lb.close()});
-  lb.addEventListener('pointerdown',function(e){sx=e.clientX});
-  lb.addEventListener('pointerup',function(e){var d=e.clientX-sx;if(Math.abs(d)>60)show(cur+(d<0?1:-1))});
+function initHist(){
+  var hist=$('#hist'),more=$('#more');if(!hist||!more)return;
+  hist.classList.add('clamp');
+  if(hist.scrollHeight<=hist.clientHeight+8)hist.classList.remove('clamp');
+  else{more.hidden=false;more.onclick=function(){var open=hist.classList.toggle('clamp')===false;more.setAttribute('aria-expanded',open);more.textContent=open?'Mostrar menos':'Ler história completa'}}
 }
+
+/* Capa em carrossel: slide 1 = ponto da página (h1, vem do servidor); os outros = pontos vizinhos, com "+ info" */
+var RM=window.matchMedia('(prefers-reduced-motion: reduce)'),hRaf=0,hReady=document.readyState==='complete';
+// Os slides extras saem dos cards de "Mais lugares" (já no HTML), então não precisam de nada novo no servidor.
+function buildSlides(){
+  var tr=$('#hslides'),have={};
+  [].forEach.call(tr.children,function(x){have[x.dataset.slug]=1});
+  document.querySelectorAll('#spots a[href^="/ponto/"]').forEach(function(a){
+    if(tr.children.length>=8)return;
+    var href=a.getAttribute('href'),sg='';
+    try{sg=decodeURIComponent(href.slice(7).split(/[?#]/)[0])}catch(e){}
+    if(!sg||have[sg])return;have[sg]=1;
+    var t=function(c){var n=a.querySelector(c);return n?n.textContent.trim():''};
+    var nm=t('.nm')||a.textContent.trim(),ct=t('.ct'),ds=t('.ds');
+    var src=a.dataset.capa||(a.querySelector('img')||{}).src||'';
+    var sl=el('div','hs');sl.dataset.slug=sg;sl.setAttribute('role','group');sl.setAttribute('aria-roledescription','slide');
+    if(safe(src)||/^https?:/.test(src)){var im=new Image();im.src=src;im.alt='Foto de '+nm;im.loading='lazy';im.decoding='async';
+      im.addEventListener('error',function(){im.remove()});sl.append(im)}
+    var tx=el('div','wrap hs-txt');tx.append(el('p','cat',ct));
+    var h=el('p','ttl'),l=el('a','',nm);l.href=href;h.append(l);tx.append(h);
+    if(ds){var w=el('p','where');w.innerHTML=PIN;w.append(el('span','',ds));tx.append(w)}
+    var b=el('a','btn','+ info');b.href=href;b.append(el('span','sr',' sobre '+nm));tx.append(b);
+    sl.append(tx);tr.append(sl);
+  });
+}
+function heroIdx(){var t=$('#hslides');return Math.round(t.scrollLeft/(t.clientWidth||1))}
+function heroGo(i){var t=$('#hslides');i=Math.max(0,Math.min(t.children.length-1,i));t.scrollTo({left:i*t.clientWidth,behavior:RM.matches?'auto':'smooth'})}
+function heroMark(){
+  var t=$('#hslides'),i=heroIdx(),n=t.children.length;
+  [].forEach.call(t.children,function(sl,k){sl.inert=k!==i});   // só o slide visível entra na ordem do Tab
+  [].forEach.call($('#hdots').children,function(d,k){if(k===i)d.setAttribute('aria-current','true');else d.removeAttribute('aria-current')});
+  $('#hprev').disabled=i<=0;$('#hnext').disabled=i>=n-1;
+  if(hReady){var nx=t.children[i+1],im=nx&&nx.querySelector('img');if(im&&im.loading==='lazy')im.loading='eager'}   // aquece o próximo
+}
+function heroUI(){
+  var t=$('#hslides'),n=t.children.length,d=$('#hdots');
+  $('#hnav').hidden=n<2;d.replaceChildren();
+  [].forEach.call(t.children,function(sl,i){
+    sl.setAttribute('aria-label',(i+1)+' de '+n);
+    var b=el('button','hd');b.type='button';b.setAttribute('aria-label','Ir para o ponto '+(i+1)+' de '+n);b.onclick=function(){heroGo(i)};d.append(b)});
+  heroMark();
+}
+function initHero(){
+  var t=$('#hslides');
+  // Sem foto (ou foto quebrada): o degradê do fundo assume
+  [].forEach.call(t.querySelectorAll('.hs>img'),function(im){if(!im.getAttribute('src'))im.remove();else im.addEventListener('error',function(){im.remove()})});
+  if(t.children.length<2)buildSlides();
+  t.addEventListener('scroll',function(){if(hRaf)return;hRaf=requestAnimationFrame(function(){hRaf=0;heroMark()})},{passive:true});
+  heroUI();
+}
+$('#hprev').onclick=function(){heroGo(heroIdx()-1)};
+$('#hnext').onclick=function(){heroGo(heroIdx()+1)};
+if(!hReady)addEventListener('load',function(){hReady=true;heroMark()});
+
+/* Galeria: carrossel com autoplay + lightbox */
+var G=[],lb=$('#lb'),lbi=$('#lbi'),cur=0,sx=0,sy=0,swiped=false;
+var gT=0,gHover=false,gFocus=false,gTouch=false,gVis=false,gIO=null;
+var lbTok=0,drag=false;
+// Troca de foto com transição: a atual sai deslizando, a nova entra do lado oposto (direção = dir: 1 avança, -1 volta)
+function show(i,dir){
+  cur=(i+G.length)%G.length;var tok=++lbTok,u=G[cur];
+  $('#lbn').textContent=(cur+1)+' / '+G.length;lbi.alt='Foto '+(cur+1)+' de '+nome;
+  [cur+1,cur-1].forEach(function(k){var x=G[(k+G.length)%G.length];if(x&&x!==u)new Image().src=x});   // pré-carrega vizinhas
+  var cs=getComputedStyle(lbi);lbi.style.transform=cs.transform;lbi.style.opacity=cs.opacity;      // congela o ponto atual de um arrasto/animação
+  lbi.getAnimations().forEach(function(a){a.cancel()});
+  if(G.length<2||!dir||RM.matches||!lb.open||!lbi.animate){lbi.style.transform=lbi.style.opacity='';lbi.src=u;return}
+  var out=lbi.animate([{transform:'translateX('+(-dir*80)+'px)',opacity:0}],{duration:170,easing:'ease-in',fill:'forwards'});
+  out.finished.then(function(){
+    if(tok!==lbTok)return;
+    lbi.src=u;
+    return lbi.decode?lbi.decode().catch(function(){}):0;   // só anima a entrada quando a nova foto está pronta
+  }).then(function(){
+    if(tok!==lbTok)return;
+    lbi.style.transform=lbi.style.opacity='';
+    lbi.getAnimations().forEach(function(a){a.cancel()});
+    lbi.animate([{transform:'translateX('+(dir*80)+'px)',opacity:0},{transform:'none',opacity:1}],{duration:300,easing:'cubic-bezier(.2,.7,.2,1)'});
+  }).catch(function(){});
+}
+function lbBack(){   // soltou sem passar do limite: a foto volta ao centro
+  if(!lbi.style.transform||lbi.style.transform==='none')return;
+  var an=lbi.animate([{transform:'none',opacity:1}],{duration:220,easing:'cubic-bezier(.2,.7,.2,1)'});
+  lbi.style.transform=lbi.style.opacity='';an.onfinish=function(){an.cancel()};
+}
+$('#lbx').onclick=function(){lb.close()};$('#lbp').onclick=function(){show(cur-1,-1)};$('#lbf').onclick=function(){show(cur+1,1)};
+lb.addEventListener('keydown',function(e){if(e.key==='ArrowLeft')show(cur-1,-1);if(e.key==='ArrowRight')show(cur+1,1)});
+lb.addEventListener('click',function(e){if(swiped){swiped=false;return}if(e.target===lb||e.target.className==='lb')lb.close()});   // após arrastar, não fecha
+lb.addEventListener('pointerdown',function(e){sx=e.clientX;sy=e.clientY;swiped=false;drag=!e.target.closest('button')&&G.length>1});
+lb.addEventListener('pointermove',function(e){   // a foto acompanha o dedo
+  if(!drag)return;var d=e.clientX-sx,v=e.clientY-sy;
+  if(Math.abs(d)>8&&Math.abs(d)>Math.abs(v)){lbi.getAnimations().forEach(function(a){a.cancel()});
+    lbi.style.transform='translateX('+d+'px)';lbi.style.opacity=Math.max(.35,1-Math.abs(d)/420)}
+});
+lb.addEventListener('pointerup',function(e){
+  var d=e.clientX-sx,v=e.clientY-sy,was=drag;drag=false;
+  if(Math.abs(d)>50&&Math.abs(d)>Math.abs(v)*1.5){swiped=true;show(cur+(d<0?1:-1),d<0?1:-1)}
+  else if(was)lbBack();
+});
+lb.addEventListener('pointercancel',function(){if(drag){drag=false;lbBack()}});
+lb.addEventListener('close',function(){gSync()});
+function gCan(g){return g.children.length>1&&g.scrollWidth>g.clientWidth+4}
+function gStep(g){var t=g.children;return t.length>1?t[1].offsetLeft-t[0].offsetLeft:g.clientWidth}
+function gMove(dir){
+  var g=$('#grid');if(!g||!gCan(g))return;
+  var max=g.scrollWidth-g.clientWidth,x=g.scrollLeft+dir*gStep(g);
+  if(dir>0&&g.scrollLeft>=max-4)x=0;else if(dir<0&&g.scrollLeft<=4)x=max;
+  g.scrollTo({left:Math.max(0,Math.min(x,max)),behavior:RM.matches?'auto':'smooth'});
+}
+// Só roda quando faz sentido: visível, aba ativa, sem mouse/foco/toque em cima, sem lightbox, sem "reduzir movimento"
+function gSync(){
+  clearInterval(gT);gT=0;
+  var g=$('#grid');
+  if(!g||gHover||gFocus||gTouch||!gVis||document.hidden||RM.matches||lb.open||!gCan(g))return;
+  gT=setInterval(function(){gMove(1)},4500);
+}
+function gPrime(){   // carrega as próximas fotos antes de chegarem na tela
+  var g=$('#grid');if(!g||!g.children.length)return;
+  var i=Math.round(g.scrollLeft/(gStep(g)||1));
+  for(var k=i;k<Math.min(g.children.length,i+5);k++){var im=g.children[k].querySelector('img');if(im&&im.loading==='lazy')im.loading='eager'}
+}
+function initGal(){
+  var grid=$('#grid');
+  G=(P.galeria||[]).map(function(g){return safe(g.url)}).filter(Boolean);
+  if(gIO){gIO.disconnect();gIO=null}
+  gVis=gHover=gFocus=gTouch=false;gSync();
+  if(!G.length||!grid)return;
+  var tiles=grid.querySelectorAll('button');
+  if(tiles.length){tiles.forEach(function(b,i){b.onclick=function(){show(i);lb.showModal();gSync()}})}   // fotos já vieram no HTML
+  else G.slice(0,12).forEach(function(u,i){var b=el('button');b.type='button';b.setAttribute('aria-label','Ampliar foto '+(i+1));
+    var im=new Image();im.src=u;im.alt='Foto '+(i+1)+' de '+nome;im.loading='lazy';im.decoding='async';b.append(im);
+    b.onclick=function(){show(i);lb.showModal();gSync()};grid.append(b)});
+  $('#gal').hidden=false;
+  grid.addEventListener('scroll',gPrime,{passive:true});
+  grid.addEventListener('pointerdown',function(e){if(e.pointerType!=='mouse'){gTouch=true;gSync()}});
+  ['pointerup','pointercancel'].forEach(function(t){grid.addEventListener(t,function(){if(gTouch){gTouch=false;gSync()}})});
+  gIO=new IntersectionObserver(function(es){gVis=es[0].isIntersecting;gSync();if(gVis)gPrime()},{threshold:.2});gIO.observe(grid);
+}
+(function(){var g=$('#gal');
+  g.addEventListener('pointerenter',function(e){if(e.pointerType==='mouse'){gHover=true;gSync()}});
+  g.addEventListener('pointerleave',function(e){if(e.pointerType==='mouse'){gHover=false;gSync()}});
+  g.addEventListener('focusin',function(e){if(e.target.matches&&e.target.matches(':focus-visible')){gFocus=true;gSync()}});
+  g.addEventListener('focusout',function(){gFocus=false;gSync()});
+})();
+document.addEventListener('visibilitychange',function(){gSync()});
 
 /* Comércios: cards e pins sincronizados */
 function walk(s){var f=user||{lat:lat,lng:lng};
@@ -353,11 +512,12 @@ function renderShops(){
   if(map)addPins();
 }
 function loadShops(){
-  var ul=$('#shops');
+  var ul=$('#shops'),s0=slug;
   api('/api/v1/ponto/'+encodeURIComponent(slug)+'/comercios-proximos').then(function(d){
+    if(s0!==slug)return;
     shops=(d.itens||[]).filter(function(s){return s.slug&&s.uuid});renderShops();
     say(shops.length?shops.length+' comércios por perto.':'Nenhum comércio cadastrado por perto.');
-  }).catch(function(){if(!ul.querySelector('li[data-id]'))retry(ul,function(){ul.setAttribute('aria-busy','true');loadShops()})});
+  }).catch(function(){if(s0===slug&&!ul.querySelector('li[data-id]'))retry(ul,function(){ul.setAttribute('aria-busy','true');loadShops()})});
 }
 
 /* Mapa do Google (carregado só quando a seção se aproxima) */
@@ -368,6 +528,11 @@ function loadGoogle(){return window.google&&google.maps&&google.maps.importLibra
   window.__gmCb=ok;   // com loading=async, o google.maps.importLibrary só existe quando o callback dispara
   s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(CFG.gkey)+'&v=weekly&loading=async&language=pt-BR&region=BR&callback=__gmCb';
   s.onerror=function(){no(new Error('o script do Google Maps não carregou (rede, extensão ou CSP bloqueando maps.googleapis.com)'))};document.head.append(s)})}
+function putMain(){
+  if(mainMk)mainMk.map=null;
+  var w=el('div');w.innerHTML=SVG;
+  mainMk=new google.maps.marker.AdvancedMarkerElement({map:map,position:{lat:lat,lng:lng},content:w.firstChild,title:nome,zIndex:1000});
+}
 function addPins(){
   var n=0,b=new google.maps.LatLngBounds();b.extend({lat:lat,lng:lng});
   shops.forEach(function(s){
@@ -387,9 +552,7 @@ function initMap(){
   loadGoogle().then(function(){return Promise.all([google.maps.importLibrary('core'),google.maps.importLibrary('maps'),google.maps.importLibrary('marker')])}).then(function(){
     map=new google.maps.Map($('#map'),{center:{lat:lat,lng:lng},zoom:15,mapId:CFG.mapId,gestureHandling:'cooperative',
       disableDefaultUI:true,zoomControl:true,clickableIcons:false});
-    var w=el('div');w.innerHTML=SVG;
-    new google.maps.marker.AdvancedMarkerElement({map:map,position:{lat:lat,lng:lng},content:w.firstChild,title:nome,zIndex:1000});
-    addPins();if(user)putUser();
+    putMain();addPins();if(user)putUser();
   }).catch(function(e){console.warn('Mapa:',e&&e.message?e.message:e);mapFail()});
 }
 // Mapa indisponível (script não carregou ou chave recusada): mostra o link e mantém os cards.
@@ -408,9 +571,12 @@ function putUser(){
 }
 function openSearch(){$('#search').classList.add('open');$('#btnSearch').setAttribute('aria-expanded','true');$('#q').focus()}
 function closeSearch(){$('#search').classList.remove('open');$('#btnSearch').setAttribute('aria-expanded','false');$('#res').replaceChildren()}
-function onUser(){
+function setCtx(){
   var km=hav(user,{lat:lat,lng:lng});
   $('#ctxText').textContent=km<0.3?'Você está bem perto de '+nome+'.':'Você está a '+(km<10?km.toFixed(1).replace('.',','):Math.round(km))+' km de '+nome+'.';
+}
+function onUser(){
+  setCtx();
   $('#btnLocate').hidden=true;say($('#ctxText').textContent);putUser();
   // Entrou pela raiz (lugar escolhido pelo IP): o GPS troca para o ponto mais perto, uma única vez.
   if(location.pathname==='/'){
@@ -467,8 +633,61 @@ function loadExplore(src,title){
       var ph=el('div','ph');if(safe(i.capa)){var im=new Image();im.src=safe(i.capa);im.alt='Foto de '+i.nome;im.loading='lazy';im.decoding='async';ph.append(im)}
       a.append(ph,el('span','nm',i.nome||''),el('span','ct',i.categoria||''),el('span','ds','a '+dist(+i.distancia_km||0).replace(' a pé',' a pé')));
       li.append(a);ul.append(li)});
+    if($('#hslides').children.length<2){buildSlides();heroUI()}
   }).catch(function(e){if(e.name!=='AbortError')retry(ul,function(){loadExplore(src,title)})});
 }
+
+/* "+ info": busca o HTML do ponto (o mesmo que o Google lê em /ponto/slug) e troca só os blocos da página */
+var swapped=false,spCtl=null;
+function put(sel,nd){var a=$(sel),b=nd.querySelector(sel);if(!a||!b)return;
+  a.replaceChildren.apply(a,[].map.call(b.childNodes,function(n){return document.importNode(n,true)}))}
+function swapPage(nd){
+  if(exCtl){exCtl.abort();exCtl=null}
+  document.title=nd.title;
+  [['meta[name="description"]','content'],['link[rel="canonical"]','href'],['meta[property="og:title"]','content'],
+   ['meta[property="og:description"]','content'],['meta[property="og:image"]','content']].forEach(function(m){
+    var a=document.querySelector(m[0]),b=nd.querySelector(m[0]);if(a&&b)a.setAttribute(m[1],b.getAttribute(m[1])||'')});
+  var ja=document.querySelector('script[type="application/ld+json"]'),jb=nd.querySelector('script[type="application/ld+json"]');
+  if(ja&&jb)ja.textContent=jb.textContent;
+  document.body.dataset.slug=nd.body.dataset.slug||'';
+  $('#ponto-data').textContent=nd.querySelector('#ponto-data').textContent;
+  put('#hslides',nd);put('.story .wrap',nd);put('#gal',nd);
+  var ng=nd.querySelector('#gal');$('#gal').hidden=ng?ng.hasAttribute('hidden'):true;
+  var sb=$('.near .sub'),nb=nd.querySelector('.near .sub');if(sb&&nb)sb.textContent=nb.textContent;
+  put('#shops',nd);$('#shops').setAttribute('aria-busy','false');   // o #map fica: a instância do Google é reaproveitada
+  put('#explorar .wrap',nd);
+  readState();
+  shops=[];Object.keys(markers).forEach(function(k){markers[k].map=null});markers={};
+  $('#map').hidden=!okGeo;
+  if(map&&okGeo){map.setCenter({lat:lat,lng:lng});map.setZoom(15);putMain()}
+  if(user&&okGeo)setCtx();
+  initPage();loadShops();
+}
+function openSpot(url,push,btn){
+  if(spCtl)spCtl.abort();spCtl=new AbortController();
+  if(btn)btn.classList.add('load');say('Carregando…');
+  fetch(url,{signal:spCtl.signal,headers:{Accept:'text/html'}}).then(function(r){if(!r.ok)throw new Error(r.status);return r.text()}).then(function(h){
+    var nd=new DOMParser().parseFromString(h,'text/html');
+    if(!nd.querySelector('#ponto-data')||!nd.querySelector('#hslides'))throw new Error('html');
+    swapPage(nd);swapped=true;
+    if(push){history.pushState(null,'',url);
+      var st=$('.story'),h2=$('#hSobre');
+      if(st)st.scrollIntoView({behavior:RM.matches?'auto':'smooth',block:'start'});
+      if(h2){h2.tabIndex=-1;h2.focus({preventScroll:true})}
+    }else window.scrollTo(0,0);
+    say(nome+' carregado.');
+  }).catch(function(e){if(e.name==='AbortError')return;if(push)location.href=url;else location.reload()});   // qualquer falha: navegação normal
+}
+document.addEventListener('click',function(e){
+  var a=e.target.closest?e.target.closest('#hslides a[href^="/ponto/"]'):null;
+  if(!a||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+  var sl=a.closest('.hs');if(!sl||sl.dataset.slug===slug)return;
+  e.preventDefault();openSpot(a.getAttribute('href'),true,sl.querySelector('.btn'));
+});
+addEventListener('popstate',function(){if(swapped)openSpot(location.pathname+location.search,false)});
+
+function initPage(){initHist();initGal();initHero()}
+initPage();
 
 /* Carrega cada bloco quando ele se aproxima da tela */
 var io=new IntersectionObserver(function(es,o){es.forEach(function(e){
