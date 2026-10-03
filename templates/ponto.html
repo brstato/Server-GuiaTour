@@ -175,6 +175,24 @@ dialog[open],dialog[open]::backdrop{animation:lbfade .25s ease-out}
 .shops{flex-direction:column;overflow:hidden auto;max-height:540px;scroll-snap-type:y proximity}
 .shops>li{flex:none}}
 
+/* O que fazer perto daqui: cards de categoria (filtro) */
+.cats{display:flex;gap:10px;margin-top:22px;padding:4px 2px 10px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,#000 90%,transparent);mask-image:linear-gradient(90deg,#000 90%,transparent)}
+.cats::-webkit-scrollbar{display:none}
+.cats:empty{display:none}
+.cc{flex:0 0 auto;display:flex;align-items:center;gap:10px;min-height:56px;padding:8px 16px 8px 8px;border:1px solid var(--linha);border-radius:16px;background:#fff;color:var(--ink);font:inherit;text-align:left;cursor:pointer;scroll-snap-align:start;box-shadow:0 1px 2px rgba(15,23,42,.05);transition:background .15s,border-color .15s,box-shadow .15s,transform .1s}
+.cc:hover{border-color:var(--azul-borda);box-shadow:0 6px 18px rgba(37,99,235,.12)}
+.cc:active{transform:scale(.98)}
+.cc .ic{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:12px;background:var(--azul-suave);color:var(--azul);transition:background .15s,color .15s}
+.cc .cn{display:block;font-size:.92rem;font-weight:700;line-height:1.2;letter-spacing:-.01em;white-space:nowrap}
+.cc .cs{display:block;color:var(--mudo);font-size:.78rem;font-weight:500;white-space:nowrap}
+.cc[aria-pressed=true]{border-color:var(--azul);background:var(--azul);color:#fff;box-shadow:0 4px 14px rgba(37,99,235,.28)}
+.cc[aria-pressed=true] .ic{background:rgba(255,255,255,.2);color:#fff}
+.cc[aria-pressed=true] .cs{color:rgba(255,255,255,.85)}
+.catnote{margin-top:10px;padding:10px 14px;border:1px solid var(--azul-borda);border-radius:12px;background:var(--azul-suave);color:var(--ink2);font-size:.92rem;font-weight:500}
+.shops>li.sk{height:132px;border:0;background:linear-gradient(90deg,#eef2f7,#f8fafc,#eef2f7);background-size:200% 100%;animation:sh 1.2s linear infinite}
+@keyframes sh{to{background-position:-200% 0}}
+@media(min-width:900px){.cats{flex-wrap:wrap;overflow:visible;-webkit-mask-image:none;mask-image:none}}
+
 /* Explorar */
 .more-sec{padding:56px 0 64px}
 .spots{display:flex;gap:14px;margin-top:20px;padding:0 0 14px;list-style:none;overflow-x:auto;scroll-snap-type:x mandatory}
@@ -254,8 +272,10 @@ footer{padding:28px 0 40px;border-top:1px solid var(--linha);color:var(--mudo);f
 
   <section class="near" id="mapa" aria-labelledby="hPerto">
     <div class="wrap">
-      <h2 id="hPerto">O que tem por perto</h2>
+      <h2 id="hPerto">O que fazer perto daqui</h2>
       <p class="sub">Comércios cadastrados no GuiaTour perto de {{PONTO_NOME}}. As distâncias contam a partir do local.</p>
+      <div class="cats" id="cats" role="group" aria-label="Filtrar por tipo de comércio">{{CATEGORIAS_HTML}}</div>
+      <p class="catnote" id="catNote" role="status" hidden></p>
       <div class="nbox">
         <div id="map" role="region" aria-label="Mapa com o ponto turístico e os comércios">
           <noscript><p>Ative o JavaScript para ver o mapa e os comércios por perto.</p></noscript>
@@ -302,7 +322,7 @@ function readState(){
   okGeo=isFinite(lat)&&isFinite(lng)&&!!(lat||lng);
 }
 readState();
-var shops=[],markers={},map=null,user=null,userMk=null,mainMk=null,exCtl=null;
+var cat='',shops=[],markers={},map=null,user=null,userMk=null,mainMk=null,exCtl=null;
 var PIN='<svg class="i" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>';
 
 function safe(u){return typeof u==='string'&&/^(\/(?!\/)|https?:\/\/)/.test(u)?u:''}
@@ -471,6 +491,42 @@ document.addEventListener('visibilitychange',function(){gSync()});
 /* Comércios: cards e pins sincronizados */
 function walk(s){var f=user||{lat:lat,lng:lng};
   return 'https://www.google.com/maps/dir/?api=1&origin='+f.lat+','+f.lng+'&destination='+s.latitude+','+s.longitude+'&travelmode=walking'}
+/* Cards de categoria: ícone pelo slug (a categoria não tem coluna de ícone) */
+var IC={
+ todos:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
+ comer:'<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
+ cafe:'<path d="M10 2v2"/><path d="M14 2v2"/><path d="M6 2v2"/><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/>',
+ bar:'<path d="M8 22h8"/><path d="M12 11v11"/><path d="m19 3-7 8-7-8Z"/>',
+ hotel:'<path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/>',
+ beleza:'<circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>',
+ tattoo:'<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>',
+ saude:'<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/>',
+ passeio:'<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>',
+ loja:'<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>'};
+function icoFor(sg){
+  var k='loja';
+  if(!sg)k='todos';
+  else if(/restaur|lanch|pizza|churras|hambur|comida|gastron|japon|sushi/.test(sg))k='comer';
+  else if(/cafe|padaria|confeit|sorvet|doce|açai|acai/.test(sg))k='cafe';
+  else if(/(^|-)(bar|pub|choperia|cervej|drinks?)(-|$)|balada|boate/.test(sg))k='bar';
+  else if(/hotel|pousada|hostel|hosped|aluguel-de-temporada/.test(sg))k='hotel';
+  else if(/salao|barbe|beleza|estetica|cabel|manicure|spa/.test(sg))k='beleza';
+  else if(/tatu|piercing/.test(sg))k='tattoo';
+  else if(/farm|saude|clinica|odonto/.test(sg))k='saude';
+  else if(/passeio|turismo|agencia|barco|mergulho|trilha|escuna|guia/.test(sg))k='passeio';
+  return '<svg class="i" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">'+IC[k]+'</svg>';
+}
+function decorateCats(){document.querySelectorAll('#cats .cc').forEach(function(b){var i=b.querySelector('.ic');if(i&&!i.firstChild)i.innerHTML=icoFor(b.dataset.cat)})}
+function setCat(c){
+  if(c===cat)return;cat=c;
+  var on=null;document.querySelectorAll('#cats .cc').forEach(function(b){var p=b.dataset.cat===c;b.setAttribute('aria-pressed',p?'true':'false');if(p)on=b});
+  if(on&&on.scrollIntoView)on.scrollIntoView({inline:'center',block:'nearest',behavior:RM.matches?'auto':'smooth'});
+  var ul=$('#shops');ul.setAttribute('aria-busy','true');ul.replaceChildren();
+  for(var i=0;i<3;i++)ul.append(el('li','sk'));
+  loadShops();
+}
+document.addEventListener('click',function(e){var b=e.target.closest?e.target.closest('#cats .cc'):null;if(b)setCat(b.dataset.cat||'')});
+function clearPins(){Object.keys(markers).forEach(function(k){markers[k].map=null});markers={}}
 function minKm(){var m=Infinity;shops.forEach(function(s){var v=parseFloat(s.distancia_km);if(isFinite(v)&&v<m)m=v});return m===Infinity?0:m}
 function hasXY(s){return isFinite(+s.latitude)&&isFinite(+s.longitude)&&(+s.latitude||+s.longitude)}
 function select(id){
@@ -483,11 +539,16 @@ function select(id){
 }
 function renderShops(){
   var ul=$('#shops');ul.replaceChildren();ul.setAttribute('aria-busy','false');
+  clearPins();
+  var cn=$('#catNote'),comp=!!(cat&&shops.length&&shops[0].complementar);
+  if(cn){cn.hidden=!comp;
+    if(comp){var pb=document.querySelector('#cats .cc[aria-pressed="true"] .cn');
+      cn.textContent='Não há '+(pb?pb.textContent:'comércios dessa categoria')+' bem perto de '+nome+'. Estes são os mais próximos.'}}
   if(!shops.length){ul.append(el('li','info','Ainda não há comércios cadastrados por aqui. Veja outros lugares logo abaixo.'));return}
   var nl=$('#nearLink');nl.textContent=shops.length===1?'Ver o comércio mais próximo':'Ver os '+shops.length+' comércios mais próximos';nl.hidden=false;
   var sb=$('.near .sub');   // sem ninguém por perto, avisa que a lista é dos mais próximos, mesmo longe
   if(sb){if(sb.dataset.o==null)sb.dataset.o=sb.textContent;
-    sb.textContent=minKm()>10?'Ainda não há comércios cadastrados bem perto de '+nome+'. Estes são os mais próximos no GuiaTour.':sb.dataset.o}
+    sb.textContent=(!cat&&minKm()>10)?'Ainda não há comércios cadastrados bem perto de '+nome+'. Estes são os mais próximos no GuiaTour.':sb.dataset.o}
   shops.forEach(function(s){
     var li=el('li');li.dataset.id=s.uuid;
     var pick=el('button','pick');pick.type='button';
@@ -516,12 +577,12 @@ function renderShops(){
   if(map)addPins();
 }
 function loadShops(){
-  var ul=$('#shops'),s0=slug;
-  api('/api/v1/ponto/'+encodeURIComponent(slug)+'/comercios-proximos').then(function(d){
-    if(s0!==slug)return;
+  var ul=$('#shops'),s0=slug,c0=cat;
+  api('/api/v1/ponto/'+encodeURIComponent(slug)+'/comercios-proximos'+(cat?'?categoria='+encodeURIComponent(cat):'')).then(function(d){
+    if(s0!==slug||c0!==cat)return;
     shops=(d.itens||[]).filter(function(s){return s.slug&&s.uuid});renderShops();   // a ordem vem do servidor
     say(shops.length?shops.length+' comércios por perto.':'Nenhum comércio cadastrado por perto.');
-  }).catch(function(){if(s0===slug&&!ul.querySelector('li[data-id]'))retry(ul,function(){ul.setAttribute('aria-busy','true');loadShops()})});
+  }).catch(function(){if(s0===slug&&c0===cat&&!ul.querySelector('li[data-id]'))retry(ul,function(){ul.setAttribute('aria-busy','true');loadShops()})});
 }
 
 /* Mapa do Google (carregado só quando a seção se aproxima) */
@@ -658,10 +719,11 @@ function swapPage(nd){
   put('#hslides',nd);put('.story .wrap',nd);put('#gal',nd);
   var ng=nd.querySelector('#gal');$('#gal').hidden=ng?ng.hasAttribute('hidden'):true;
   var sb=$('.near .sub'),nb=nd.querySelector('.near .sub');if(sb&&nb){sb.textContent=nb.textContent;delete sb.dataset.o}
+  put('#cats',nd);cat='';var cn0=$('#catNote');if(cn0)cn0.hidden=true;
   put('#shops',nd);$('#shops').setAttribute('aria-busy','false');   // o #map fica: a instância do Google é reaproveitada
   put('#explorar .wrap',nd);
   readState();
-  shops=[];Object.keys(markers).forEach(function(k){markers[k].map=null});markers={};
+  shops=[];clearPins();
   $('#map').hidden=!okGeo;
   if(map&&okGeo){map.setCenter({lat:lat,lng:lng});map.setZoom(15);putMain()}
   if(user&&okGeo)setCtx();
@@ -690,7 +752,7 @@ document.addEventListener('click',function(e){
 });
 addEventListener('popstate',function(){if(swapped)openSpot(location.pathname+location.search,false)});
 
-function initPage(){initHist();initGal();initHero()}
+function initPage(){initHist();initGal();initHero();decorateCats()}
 initPage();
 
 /* Carrega cada bloco quando ele se aproxima da tela */

@@ -5,7 +5,7 @@ unit utPontoscontroller;
 interface
 
 uses
-  Classes, SysUtils, Horse, uJsonView, fpjson,
+  Classes, SysUtils, Horse, uJsonView, fpjson, uguiatourutils,
   udata, uconfig, usecurityservice, upontoturisticomodel, Horse.JWT;
 
 type
@@ -333,7 +333,7 @@ end;
 // e prioriza a ordenação), resolvido dentro do model.
 procedure HandlerComerciosProximos(Req: THorseRequest; Res: THorseResponse; next: TNextProc);
 var
-  slug: string;
+  slug, categoria: string;
   arrayItens: TJSONArray;
   jsonRes: TJSONObject;
 begin
@@ -348,7 +348,20 @@ begin
       Exit;
     end;
 
-    arrayItens := TPontoTuristicoModel.GetComerciosProximos(slug);
+    //arrayItens := TPontoTuristicoModel.GetComerciosProximos(slug);
+
+    categoria := Trim(Req.Query['categoria']);
+    if categoria <> '' then
+    begin
+      if (Length(categoria) > 50) or (not SlugValido(categoria)) then
+      begin
+        TJsonView.SendError(Res, 400, 'Categoria inválida.');
+        Exit;
+      end;
+      arrayItens := TPontoTuristicoModel.GetComerciosPorCategoria(slug, categoria);
+    end
+    else
+      arrayItens := TPontoTuristicoModel.GetComerciosProximos(slug);
 
     jsonRes := TJSONObject.Create;
     jsonRes.Add('itens', arrayItens);

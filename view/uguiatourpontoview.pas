@@ -21,13 +21,15 @@ type
     // Comercios e Proximos são opcionais; a view NÃO assume a posse deles.
     class function RenderTemplate(const Tpl: string; Ponto: TJSONObject;
       const Slug: string; Comercios: TJSONArray = nil;
-      Proximos: TJSONArray = nil): string;
+      Proximos: TJSONArray = nil; Categorias: TJSONArray = nil): string;
   end;
 
 implementation
 
 const
   BASE_URL = 'https://guiatour.online';
+  REL_DESTAQUE = ' rel="sponsored"';
+  MAX_FOTOS_GRADE = 7;
 
 function UrlAbsoluta(const Caminho: string): string;
 begin
@@ -69,13 +71,6 @@ begin
     Result := Utf8Corta(Result, Max - 1) + '…';
 end;
 
-
-const
-  // Links dos comércios em destaque (pagos): o Google pede rel="sponsored".
-  // Para desligar, troque por ''.
-  REL_DESTAQUE = ' rel="sponsored"';
-  MAX_FOTOS_GRADE = 7;
-
 // Só caminho absoluto do próprio site ou http(s); qualquer outra coisa vira ''.
 function UrlSegura(const U: string): string;
 begin
@@ -108,6 +103,8 @@ begin
     if min < 1 then min := 1;
     Result := IntToStr(min) + ' min a pé';
   end
+  else if Km >= 10 then
+    Result := IntToStr(Round(Km)) + ' km'
   else
     Result := FmtVirgula(Km, 1) + ' km';
 end;
@@ -211,6 +208,36 @@ begin
     Result := Result + '</div></li>';
   end;
   if Result = '' then Result := '<li class="info">Ainda não há comércios cadastrados por aqui.</li>';
+end;
+
+// Cards de categoria (filtro). O JavaScript liga o clique e desenha o ícone.
+function CategoriasParaHtml(Arr: TJSONArray): string;
+var
+  i, qtd: Integer;
+  o: TJSONObject;
+  slug, sub: string;
+begin
+  Result := '';
+  if (Arr = nil) or (Arr.Count < 2) then Exit;
+  Result := '<button type="button" class="cc" data-cat="" aria-pressed="true">' +
+    '<i class="ic" aria-hidden="true"></i><span><span class="cn">Tudo</span>' +
+    '<span class="cs">Todos os tipos</span></span></button>';
+  for i := 0 to Arr.Count - 1 do
+  begin
+    if Arr.Items[i].JSONType <> jtObject then Continue;
+    o := TJSONObject(Arr.Items[i]);
+    slug := o.Get('slug', '');
+    if not SlugValido(slug) then Continue;
+    qtd := o.Get('qtd_regiao', 0);
+    if qtd > 0 then
+      sub := IntToStr(qtd) + ' por perto'
+    else
+      sub := 'a ' + FmtDist(o.Get('distancia_min_km', 0.0));
+    Result := Result + '<button type="button" class="cc" data-cat="' + HtmlEsc(slug) +
+      '" aria-pressed="false"><i class="ic" aria-hidden="true"></i><span><span class="cn">' +
+      HtmlEsc(o.Get('nome', '')) + '</span><span class="cs">' + HtmlEsc(sub) +
+      '</span></span></button>';
+  end;
 end;
 
 // "Mais lugares para conhecer": links entre os pontos (malha interna).
@@ -332,7 +359,8 @@ end;
 { TPontoView }
 
 class function TPontoView.RenderTemplate(const Tpl: string; Ponto: TJSONObject;
-  const Slug: string; Comercios: TJSONArray; Proximos: TJSONArray): string;
+  const Slug: string; Comercios: TJSONArray; Proximos: TJSONArray;
+  Categorias: TJSONArray): string;
 var
   Vars: TDictionary<string, string>;
   nome, resumo, cidade, uf, categoria: string;
@@ -372,6 +400,7 @@ begin
     // Blocos já escritos no HTML (SEO): fotos, comércios e pontos vizinhos.
     Vars.Add('PONTO_GALERIA_HTML',    galeriaHtml);
     Vars.Add('GAL_HIDDEN',            IfThen(galeriaHtml = '', 'hidden', ''));
+    Vars.Add('CATEGORIAS_HTML',       CategoriasParaHtml(Categorias));
     Vars.Add('COMERCIOS_HTML',        ComerciosParaHtml(Comercios,
       Ponto.Get('latitude', 0.0), Ponto.Get('longitude', 0.0)));
     Vars.Add('PONTOS_PROXIMOS_HTML',  ProximosParaHtml(Proximos));
@@ -388,20 +417,23 @@ end;
 class function TPontoView.Render(Ponto: TJSONObject; const Slug: string): string;
 var
   Tpl: TStringList;
-  Comercios, Proximos: TJSONArray;
+  Comercios, Proximos, Categorias: TJSONArray;
 begin
   Comercios := nil;
   Proximos := nil;
+  Categorias := nil;
   Tpl := TStringList.Create;
   try
     Tpl.LoadFromFile(ExtractFilePath(ParamStr(0)) + 'templates/ponto.html');
     // Se uma das consultas falhar, a página sai sem esse bloco (o JavaScript completa).
-    try Comercios := TPontoTuristicoModel.GetComerciosProximos(Slug); except Comercios := nil; end;
-    try Proximos := TPontoTuristicoModel.GetPontosProximos(Slug, 6); except Proximos := nil; end;
-    Result := RenderTemplate(Tpl.Text, Ponto, Slug, Comercios, Proximos);
+    try Comercios  := TPontoTuristicoModel.GetComerciosProximos(Slug); except Comercios := nil; end;
+    try Proximos   := TPontoTuristicoModel.GetPontosProximos(Slug, 6); except Proximos := nil; end;
+    try Categorias := TPontoTuristicoModel.GetCategoriasProximas(Slug); except Categorias := nil; end;
+    Result := RenderTemplate(Tpl.Text, Ponto, Slug, Comercios, Proximos, Categorias);
   finally
     Comercios.Free;
     Proximos.Free;
+    Categorias.Free;
     Tpl.Free;
   end;
 end;

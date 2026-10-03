@@ -8,11 +8,13 @@ uses
 const
   RAIO_BASE_KM            = 5.0;  // raio padrão de visibilidade do comércio
   RAIO_EXTRA_POR_NIVEL_KM = 5.0;  // cada nível de PLANO_DESTAQUE soma esse tanto ao raio
-  LIMITE_COMERCIOS_PROXIMOS = 12;
+  FAIXA_DESEMPATE_KM      = 1.0;
+  LIMITE_COMERCIOS_PROXIMOS = 20;
   MAX_IMAGEM_BYTES  = 5 * 1024 * 1024;   // tamanho máximo de cada imagem já decodificada
   MAX_FOTOS_GALERIA = 20;                // máximo de fotos por requisição
   MAX_SLUG_BASE     = 90;                // coluna SLUG = 100; folga para o sufixo "-N"
   MAX_PLANO_DESTAQUE = 3;   // maior nível de PLANO_DESTAQUE em uso; define a caixa do pré-filtro
+  LIMITE_COMERCIOS_CATEGORIA = 12;
 
 type
   EImagemInvalida = class(Exception);
@@ -67,6 +69,8 @@ type
     class function GerarSlugUnico(const Base: string; const UuidIgnorar: string = ''): string;
     class function GerarNomeArquivoSeguro(const NomeOriginal, UuidPonto: string; out NomeFinal: string): Boolean;
     class procedure RemoveItem(const id: integer);
+    class function GetCategoriasProximas(slug: string): TJSONArray;
+    class function GetComerciosPorCategoria(slug, categoria: string): TJSONArray;
   private
     class function MontarGaleriaJson(idPonto: integer): TJSONArray;
     class function ConteudoPareceImagem(const dados: string): Boolean;
@@ -102,6 +106,23 @@ begin
 end;
 
 { ---------- helpers ---------- }
+
+function ComercioParaJson(ds: TDataSet; Complementar: Boolean): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.Add('uuid',             ds.FieldByName('uuid'            ).AsString);
+  Result.Add('nome',             ds.FieldByName('nome'            ).AsString);
+  Result.Add('slug',             ds.FieldByName('slug'            ).AsString);
+  Result.Add('categoria',        ds.FieldByName('categoria_nome'  ).AsString);
+  Result.Add('avatar',           ds.FieldByName('avatar'          ).AsString);
+  Result.Add('latitude',         ds.FieldByName('lat_c'           ).AsFloat);
+  Result.Add('longitude',        ds.FieldByName('lng_c'           ).AsFloat);
+  Result.Add('distancia_km',     RoundTo(ds.FieldByName('distancia_km').AsFloat, -1));
+  Result.Add('destacado',        ds.FieldByName('plano_destaque'  ).AsInteger > 0);
+  Result.Add('nota_media',       RoundTo(ds.FieldByName('nota_media').AsFloat, -1));
+  Result.Add('total_avaliacoes', ds.FieldByName('total_avaliacoes').AsInteger);
+  Result.Add('complementar',     Complementar);
+end;
 
 class function TPontoTuristicoModel.MontarGaleriaJson(idPonto: integer): TJSONArray;
 var
@@ -708,8 +729,7 @@ end;
 class function TPontoTuristicoModel.GetComerciosProximos(slug: string): TJSONArray;
 var
   dsPonto, dataset: TDataSet;
-  lat, lng, raioMax: Double;
-  latMin, latMax, lngMin, lngMax: Double;
+  lat, lng: Double;
   item: TJSONObject;
 begin
   Result := TJSONArray.Create;
@@ -731,16 +751,14 @@ begin
     lat := dsPonto.FieldByName('latitude' ).AsFloat;
     lng := dsPonto.FieldByName('longitude').AsFloat;
 
-    raioMax := RAIO_BASE_KM + MAX_PLANO_DESTAQUE * RAIO_EXTRA_POR_NIVEL_KM;
-    CalcularCaixa(lat, lng, raioMax, latMin, latMax, lngMin, lngMax);
-
-    //gkey:'AIzaSyA5M4yVTKwcI-vHz8qbE0yLiP6hfLCy8MM',mapId:'a49c24d7ae14e69f3d88399e'
-
+    // Cada parâmetro aparece uma única vez e na mesma ordem da lista abaixo.
     dataset := TGetData.getData(
       'WITH BASE AS (' +
-      '  SELECT l.uuid, l.nome, l.slug, ' +
+      '  SELECT l.uuid, l.id_categoria, l.nome, l.slug, ' +
       '         COALESCE(l.plano_destaque, 0) AS plano_destaque, ' +
       '         c.nome AS categoria_nome, s.avatar, ' +
+      '         COALESCE(a.nota_media, 0) AS nota_media, ' +
+      '         COALESCE(a.total_avaliacoes, 0) AS total_avaliacoes, ' +
       '         l.latitude AS lat_c, l.longitude AS lng_c, ' +
       '         (COS(CAST(:lat1 AS DOUBLE PRECISION) * 0.017453292519943295) * COS(l.latitude * 0.017453292519943295) * ' +
       '          COS(l.longitude * 0.017453292519943295 - CAST(:lng AS DOUBLE PRECISION) * 0.017453292519943295) + ' +
@@ -748,26 +766,55 @@ begin
       '  FROM loja l ' +
       '  JOIN categoria c ON c.id = l.id_categoria ' +
       '  LEFT JOIN site s ON s.id_loja_ex = l.uuid ' +
+      '  LEFT JOIN (SELECT d.id_loja, AVG(CAST(d.nota AS DOUBLE PRECISION)) AS nota_media, COUNT(*) AS total_avaliacoes ' +
+      '             FROM depoimentos d WHERE d.status = ''aprovado'' GROUP BY d.id_loja) a ON a.id_loja = l.uuid ' +
       '  WHERE l.latitude IS NOT NULL AND l.longitude IS NOT NULL ' +
-      '    AND l.validade >= CURRENT_DATE ' +
-      '    AND l.latitude  BETWEEN :lat_min AND :lat_max ' +
-      '    AND l.longitude BETWEEN :lng_min AND :lng_max' +
+      '    AND l.validade >= CURRENT_DATE' +
       '), DIST AS (' +
-      '  SELECT uuid, nome, slug, plano_destaque, categoria_nome, avatar, ' +
-      '         lat_c, lng_c, ' +
-      '         6371 * ACOS(CASE WHEN cos_d > 1.0 THEN 1.0 ' +
-      '                          WHEN cos_d < -1.0 THEN -1.0 ' +
-      '                          ELSE cos_d END) AS distancia_km ' +
-      '  FROM BASE' +
+      '  SELECT b.uuid, b.id_categoria, b.nome, b.slug, b.plano_destaque, b.categoria_nome, b.avatar, ' +
+      '         b.nota_media, b.total_avaliacoes, b.lat_c, b.lng_c, ' +
+      '         6371 * ACOS(CASE WHEN b.cos_d > 1.0 THEN 1.0 ' +
+      '                          WHEN b.cos_d < -1.0 THEN -1.0 ' +
+      '                          ELSE b.cos_d END) AS distancia_km, ' +
+      '         (CAST(:raio_base AS DOUBLE PRECISION) + b.plano_destaque * CAST(:raio_extra AS DOUBLE PRECISION)) AS raio_ef ' +
+      '  FROM BASE b' +
+      // 1) comércios dentro do raio deles (o destaque amplia o raio)
+      '), LOCAIS AS (' +
+      '  SELECT d.uuid, d.id_categoria, d.nome, d.slug, d.plano_destaque, d.categoria_nome, d.avatar, ' +
+      '         d.nota_media, d.total_avaliacoes, d.lat_c, d.lng_c, d.distancia_km ' +
+      '  FROM DIST d WHERE d.distancia_km <= d.raio_ef' +
+      // 2) categorias sem ninguém na região: o mais próximo de cada uma complementa a lista
+      '), FALTANTES AS (' +
+      '  SELECT d.uuid, d.id_categoria, d.nome, d.slug, d.plano_destaque, d.categoria_nome, d.avatar, ' +
+      '         d.nota_media, d.total_avaliacoes, d.lat_c, d.lng_c, d.distancia_km, ' +
+      '         ROW_NUMBER() OVER (PARTITION BY d.id_categoria ' +
+      '                            ORDER BY d.distancia_km ASC, d.plano_destaque DESC, d.nota_media DESC) AS rn ' +
+      '  FROM DIST d ' +
+      '  WHERE NOT EXISTS (SELECT 1 FROM LOCAIS x WHERE x.id_categoria = d.id_categoria)' +
+      '), LISTA AS (' +
+      '  SELECT uuid, id_categoria, nome, slug, plano_destaque, categoria_nome, avatar, ' +
+      '         nota_media, total_avaliacoes, lat_c, lng_c, distancia_km FROM LOCAIS ' +
+      '  UNION ALL ' +
+      '  SELECT uuid, id_categoria, nome, slug, plano_destaque, categoria_nome, avatar, ' +
+      '         nota_media, total_avaliacoes, lat_c, lng_c, distancia_km FROM FALTANTES WHERE rn = 1' +
+      '), FX AS (' +
+      '  SELECT x.*, CAST(FLOOR(x.distancia_km / CAST(:faixa AS DOUBLE PRECISION)) AS INTEGER) AS faixa_km ' +
+      '  FROM LISTA x' +
+      // 3) posição dentro da categoria: o plano age aqui; desempate por faixa, nota e avaliações
+      '), POS AS (' +
+      '  SELECT f.*, ROW_NUMBER() OVER (PARTITION BY f.id_categoria ' +
+      '                                 ORDER BY f.plano_destaque DESC, f.faixa_km ASC, ' +
+      '                                          f.nota_media DESC, f.total_avaliacoes DESC, f.distancia_km ASC) AS pos_cat ' +
+      '  FROM FX f' +
       ') ' +
-      'SELECT * FROM DIST ' +
-      'WHERE distancia_km <= (CAST(:raio_base AS DOUBLE PRECISION) + plano_destaque * CAST(:raio_extra AS DOUBLE PRECISION)) ' +
-      'ORDER BY plano_destaque DESC, distancia_km ASC ' +
+      // 4) o melhor de cada categoria primeiro, depois o segundo de cada uma, e assim por diante
+      'SELECT * FROM POS ' +
+      'ORDER BY pos_cat ASC, faixa_km ASC, plano_destaque DESC, nota_media DESC, total_avaliacoes DESC, distancia_km ASC ' +
       'ROWS :limite;',
       [
         lat, lng, lat,
-        latMin, latMax, lngMin, lngMax,
         RAIO_BASE_KM, RAIO_EXTRA_POR_NIVEL_KM,
+        FAIXA_DESEMPATE_KM,
         LIMITE_COMERCIOS_PROXIMOS
       ],
       True
@@ -776,15 +823,17 @@ begin
     while not dataset.EOF do
     begin
       item := TJSONObject.Create;
-      item.Add('uuid',         dataset.FieldByName('uuid'          ).AsString);
-      item.Add('nome',         dataset.FieldByName('nome'          ).AsString);
-      item.Add('slug',         dataset.FieldByName('slug'          ).AsString);
-      item.Add('categoria',    dataset.FieldByName('categoria_nome').AsString);
-      item.Add('avatar',       dataset.FieldByName('avatar'        ).AsString);
-      item.Add('latitude',     dataset.FieldByName('lat_c'         ).AsFloat);
-      item.Add('longitude',    dataset.FieldByName('lng_c'         ).AsFloat);
-      item.Add('distancia_km', RoundTo(dataset.FieldByName('distancia_km').AsFloat, -1));
-      item.Add('destacado',    dataset.FieldByName('plano_destaque').AsInteger > 0);
+      item.Add('uuid',             dataset.FieldByName('uuid'            ).AsString);
+      item.Add('nome',             dataset.FieldByName('nome'            ).AsString);
+      item.Add('slug',             dataset.FieldByName('slug'            ).AsString);
+      item.Add('categoria',        dataset.FieldByName('categoria_nome'  ).AsString);
+      item.Add('avatar',           dataset.FieldByName('avatar'          ).AsString);
+      item.Add('latitude',         dataset.FieldByName('lat_c'           ).AsFloat);
+      item.Add('longitude',        dataset.FieldByName('lng_c'           ).AsFloat);
+      item.Add('distancia_km',     RoundTo(dataset.FieldByName('distancia_km').AsFloat, -1));
+      item.Add('destacado',        dataset.FieldByName('plano_destaque'  ).AsInteger > 0);
+      item.Add('nota_media',       RoundTo(dataset.FieldByName('nota_media').AsFloat, -1));
+      item.Add('total_avaliacoes', dataset.FieldByName('total_avaliacoes').AsInteger);
       Result.Add(item);
       dataset.Next;
     end;
@@ -1012,6 +1061,174 @@ begin
     );
   except
     raise;
+  end;
+end;
+
+class function TPontoTuristicoModel.GetCategoriasProximas(slug: string): TJSONArray;
+var
+  dsPonto, dataset: TDataSet;
+  lat, lng: Double;
+  item: TJSONObject;
+begin
+  Result := TJSONArray.Create;
+
+  dsPonto := nil;
+  dataset := nil;
+  try
+    dsPonto := TGetData.getData(
+      'SELECT latitude, longitude FROM ponto_turistico ' +
+      'WHERE slug = :slug AND ativo = TRUE;',
+      [slug],
+      True
+    );
+
+    if (not Assigned(dsPonto)) or dsPonto.IsEmpty then Exit;
+    if dsPonto.FieldByName('latitude').IsNull or
+       dsPonto.FieldByName('longitude').IsNull then Exit;
+
+    lat := dsPonto.FieldByName('latitude' ).AsFloat;
+    lng := dsPonto.FieldByName('longitude').AsFloat;
+
+    dataset := TGetData.getData(
+      'WITH BASE AS (' +
+      '  SELECT l.id_categoria, COALESCE(l.plano_destaque, 0) AS plano_destaque, ' +
+      '         (COS(CAST(:lat1 AS DOUBLE PRECISION) * 0.017453292519943295) * COS(l.latitude * 0.017453292519943295) * ' +
+      '          COS(l.longitude * 0.017453292519943295 - CAST(:lng AS DOUBLE PRECISION) * 0.017453292519943295) + ' +
+      '          SIN(CAST(:lat2 AS DOUBLE PRECISION) * 0.017453292519943295) * SIN(l.latitude * 0.017453292519943295)) AS cos_d ' +
+      '  FROM loja l ' +
+      '  JOIN categoria c ON c.id = l.id_categoria ' +
+      '  WHERE l.latitude IS NOT NULL AND l.longitude IS NOT NULL ' +
+      '    AND l.validade >= CURRENT_DATE ' +
+      '    AND COALESCE(c.ativa, TRUE) = TRUE' +
+      '), DIST AS (' +
+      '  SELECT b.id_categoria, ' +
+      '         6371 * ACOS(CASE WHEN b.cos_d > 1.0 THEN 1.0 ' +
+      '                          WHEN b.cos_d < -1.0 THEN -1.0 ' +
+      '                          ELSE b.cos_d END) AS distancia_km, ' +
+      '         (CAST(:raio_base AS DOUBLE PRECISION) + b.plano_destaque * CAST(:raio_extra AS DOUBLE PRECISION)) AS raio_ef ' +
+      '  FROM BASE b' +
+      '), AGG AS (' +
+      '  SELECT d.id_categoria, ' +
+      '         SUM(CASE WHEN d.distancia_km <= d.raio_ef THEN 1 ELSE 0 END) AS qtd_regiao, ' +
+      '         MIN(d.distancia_km) AS dist_min ' +
+      '  FROM DIST d GROUP BY d.id_categoria' +
+      ') ' +
+      'SELECT c.slug, c.nome, a.qtd_regiao, a.dist_min ' +
+      'FROM AGG a JOIN categoria c ON c.id = a.id_categoria ' +
+      'ORDER BY CASE WHEN a.qtd_regiao > 0 THEN 0 ELSE 1 END, c.ordem, a.dist_min, c.nome;',
+      [
+        lat, lng, lat,
+        RAIO_BASE_KM, RAIO_EXTRA_POR_NIVEL_KM
+      ],
+      True
+    );
+
+    while not dataset.EOF do
+    begin
+      item := TJSONObject.Create;
+      item.Add('slug',             dataset.FieldByName('slug'      ).AsString);
+      item.Add('nome',             dataset.FieldByName('nome'      ).AsString);
+      item.Add('qtd_regiao',       dataset.FieldByName('qtd_regiao').AsInteger);
+      item.Add('distancia_min_km', RoundTo(dataset.FieldByName('dist_min').AsFloat, -1));
+      Result.Add(item);
+      dataset.Next;
+    end;
+  finally
+    dsPonto.Free;
+    dataset.Free;
+  end;
+end;
+
+class function TPontoTuristicoModel.GetComerciosPorCategoria(slug, categoria: string): TJSONArray;
+var
+  dsPonto, dataset: TDataSet;
+  lat, lng: Double;
+begin
+  Result := TJSONArray.Create;
+
+  dsPonto := nil;
+  dataset := nil;
+  try
+    dsPonto := TGetData.getData(
+      'SELECT latitude, longitude FROM ponto_turistico ' +
+      'WHERE slug = :slug AND ativo = TRUE;',
+      [slug],
+      True
+    );
+
+    if (not Assigned(dsPonto)) or dsPonto.IsEmpty then Exit;
+    if dsPonto.FieldByName('latitude').IsNull or
+       dsPonto.FieldByName('longitude').IsNull then Exit;
+
+    lat := dsPonto.FieldByName('latitude' ).AsFloat;
+    lng := dsPonto.FieldByName('longitude').AsFloat;
+
+    // Ordem dos parâmetros = ordem em que aparecem no texto.
+    dataset := TGetData.getData(
+      'WITH BASE AS (' +
+      '  SELECT l.uuid, l.id_categoria, l.nome, l.slug, ' +
+      '         COALESCE(l.plano_destaque, 0) AS plano_destaque, ' +
+      '         c.nome AS categoria_nome, s.avatar, ' +
+      '         COALESCE(a.nota_media, 0) AS nota_media, ' +
+      '         COALESCE(a.total_avaliacoes, 0) AS total_avaliacoes, ' +
+      '         l.latitude AS lat_c, l.longitude AS lng_c, ' +
+      '         (COS(CAST(:lat1 AS DOUBLE PRECISION) * 0.017453292519943295) * COS(l.latitude * 0.017453292519943295) * ' +
+      '          COS(l.longitude * 0.017453292519943295 - CAST(:lng AS DOUBLE PRECISION) * 0.017453292519943295) + ' +
+      '          SIN(CAST(:lat2 AS DOUBLE PRECISION) * 0.017453292519943295) * SIN(l.latitude * 0.017453292519943295)) AS cos_d ' +
+      '  FROM loja l ' +
+      '  JOIN categoria c ON c.id = l.id_categoria ' +
+      '  LEFT JOIN site s ON s.id_loja_ex = l.uuid ' +
+      '  LEFT JOIN (SELECT d.id_loja, AVG(CAST(d.nota AS DOUBLE PRECISION)) AS nota_media, COUNT(*) AS total_avaliacoes ' +
+      '             FROM depoimentos d WHERE d.status = ''aprovado'' GROUP BY d.id_loja) a ON a.id_loja = l.uuid ' +
+      '  WHERE l.latitude IS NOT NULL AND l.longitude IS NOT NULL ' +
+      '    AND l.validade >= CURRENT_DATE ' +
+      '    AND c.slug = :cat ' +
+      '    AND COALESCE(c.ativa, TRUE) = TRUE' +
+      '), DIST AS (' +
+      '  SELECT b.uuid, b.id_categoria, b.nome, b.slug, b.plano_destaque, b.categoria_nome, b.avatar, ' +
+      '         b.nota_media, b.total_avaliacoes, b.lat_c, b.lng_c, ' +
+      '         6371 * ACOS(CASE WHEN b.cos_d > 1.0 THEN 1.0 ' +
+      '                          WHEN b.cos_d < -1.0 THEN -1.0 ' +
+      '                          ELSE b.cos_d END) AS distancia_km, ' +
+      '         (CAST(:raio_base AS DOUBLE PRECISION) + b.plano_destaque * CAST(:raio_extra AS DOUBLE PRECISION)) AS raio_ef ' +
+      '  FROM BASE b' +
+      '), LISTA AS (' +
+      // dentro da região: o plano age
+      '  SELECT d.uuid, d.nome, d.slug, d.plano_destaque, d.categoria_nome, d.avatar, ' +
+      '         d.nota_media, d.total_avaliacoes, d.lat_c, d.lng_c, d.distancia_km, 0 AS complementar ' +
+      '  FROM DIST d WHERE d.distancia_km <= d.raio_ef ' +
+      '  UNION ALL ' +
+      // ninguém na região: os mais próximos
+      '  SELECT d.uuid, d.nome, d.slug, d.plano_destaque, d.categoria_nome, d.avatar, ' +
+      '         d.nota_media, d.total_avaliacoes, d.lat_c, d.lng_c, d.distancia_km, 1 AS complementar ' +
+      '  FROM DIST d ' +
+      '  WHERE NOT EXISTS (SELECT 1 FROM DIST x WHERE x.distancia_km <= x.raio_ef)' +
+      '), FX AS (' +
+      '  SELECT x.*, CAST(FLOOR(x.distancia_km / CAST(:faixa AS DOUBLE PRECISION)) AS INTEGER) AS faixa_km ' +
+      '  FROM LISTA x' +
+      ') ' +
+      'SELECT * FROM FX ' +
+      'ORDER BY CASE WHEN complementar = 0 THEN plano_destaque ELSE 0 END DESC, ' +
+      '         faixa_km ASC, nota_media DESC, total_avaliacoes DESC, distancia_km ASC ' +
+      'ROWS :limite;',
+      [
+        lat, lng, lat,
+        categoria,
+        RAIO_BASE_KM, RAIO_EXTRA_POR_NIVEL_KM,
+        FAIXA_DESEMPATE_KM,
+        LIMITE_COMERCIOS_CATEGORIA
+      ],
+      True
+    );
+
+    while not dataset.EOF do
+    begin
+      Result.Add(ComercioParaJson(dataset, dataset.FieldByName('complementar').AsInteger = 1));
+      dataset.Next;
+    end;
+  finally
+    dsPonto.Free;
+    dataset.Free;
   end;
 end;
 
