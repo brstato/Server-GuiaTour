@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" translate="yes">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -310,7 +310,7 @@ function say(t){$('#live').textContent=t}
 function api(u,sig){return fetch(u,{signal:sig,headers:{Accept:'application/json'}}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()})}
 function hav(a,b){var R=6371,r=Math.PI/180,dl=(b.lat-a.lat)*r,dg=(b.lng-a.lng)*r,
   x=Math.sin(dl/2)*Math.sin(dl/2)+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dg/2)*Math.sin(dg/2);return 2*R*Math.asin(Math.sqrt(x))}
-function dist(km){var m=km*1000;return m/CFG.mpm<=15?Math.max(1,Math.round(m/CFG.mpm))+' min a pé':km.toFixed(1).replace('.',',')+' km'}
+function dist(km){var m=km*1000;return m/CFG.mpm<=15?Math.max(1,Math.round(m/CFG.mpm))+' min a pé':(km<10?km.toFixed(1).replace('.',','):Math.round(km))+' km'}
 function retry(ul,fn){ul.setAttribute('aria-busy','false');ul.replaceChildren();var li=el('li','info','Não foi possível carregar agora. ');var b=el('button','btn ghost','Tentar de novo');b.type='button';b.onclick=fn;li.append(b);ul.append(li)}
 // Evento de clique: não bloqueia a navegação e falha em silêncio.
 function track(tipo,loja){try{var b=JSON.stringify({tipo:tipo,loja:loja,ponto:slug});
@@ -471,6 +471,7 @@ document.addEventListener('visibilitychange',function(){gSync()});
 /* Comércios: cards e pins sincronizados */
 function walk(s){var f=user||{lat:lat,lng:lng};
   return 'https://www.google.com/maps/dir/?api=1&origin='+f.lat+','+f.lng+'&destination='+s.latitude+','+s.longitude+'&travelmode=walking'}
+function minKm(){var m=Infinity;shops.forEach(function(s){var v=parseFloat(s.distancia_km);if(isFinite(v)&&v<m)m=v});return m===Infinity?0:m}
 function hasXY(s){return isFinite(+s.latitude)&&isFinite(+s.longitude)&&(+s.latitude||+s.longitude)}
 function select(id){
   document.querySelectorAll('.shops>li[data-id]').forEach(function(c){c.setAttribute('aria-current',c.dataset.id===id)});
@@ -483,7 +484,10 @@ function select(id){
 function renderShops(){
   var ul=$('#shops');ul.replaceChildren();ul.setAttribute('aria-busy','false');
   if(!shops.length){ul.append(el('li','info','Ainda não há comércios cadastrados por aqui. Veja outros lugares logo abaixo.'));return}
-  var nl=$('#nearLink');nl.textContent=shops.length===1?'Ver o comércio por perto':'Ver os '+shops.length+' comércios por perto';nl.hidden=false;
+  var nl=$('#nearLink');nl.textContent=shops.length===1?'Ver o comércio mais próximo':'Ver os '+shops.length+' comércios mais próximos';nl.hidden=false;
+  var sb=$('.near .sub');   // sem ninguém por perto, avisa que a lista é dos mais próximos, mesmo longe
+  if(sb){if(sb.dataset.o==null)sb.dataset.o=sb.textContent;
+    sb.textContent=minKm()>10?'Ainda não há comércios cadastrados bem perto de '+nome+'. Estes são os mais próximos no GuiaTour.':sb.dataset.o}
   shops.forEach(function(s){
     var li=el('li');li.dataset.id=s.uuid;
     var pick=el('button','pick');pick.type='button';
@@ -515,7 +519,7 @@ function loadShops(){
   var ul=$('#shops'),s0=slug;
   api('/api/v1/ponto/'+encodeURIComponent(slug)+'/comercios-proximos').then(function(d){
     if(s0!==slug)return;
-    shops=(d.itens||[]).filter(function(s){return s.slug&&s.uuid});renderShops();
+    shops=(d.itens||[]).filter(function(s){return s.slug&&s.uuid});renderShops();   // a ordem vem do servidor
     say(shops.length?shops.length+' comércios por perto.':'Nenhum comércio cadastrado por perto.');
   }).catch(function(){if(s0===slug&&!ul.querySelector('li[data-id]'))retry(ul,function(){ul.setAttribute('aria-busy','true');loadShops()})});
 }
@@ -534,10 +538,10 @@ function putMain(){
   mainMk=new google.maps.marker.AdvancedMarkerElement({map:map,position:{lat:lat,lng:lng},content:w.firstChild,title:nome,zIndex:1000});
 }
 function addPins(){
-  var n=0,b=new google.maps.LatLngBounds();b.extend({lat:lat,lng:lng});
+  var n=0,b=new google.maps.LatLngBounds(),cut=Math.max(30,minKm());b.extend({lat:lat,lng:lng});
   shops.forEach(function(s){
     if(!hasXY(s))return;
-    var pos={lat:+s.latitude,lng:+s.longitude};b.extend(pos);
+    var pos={lat:+s.latitude,lng:+s.longitude};if((parseFloat(s.distancia_km)||0)<=cut)b.extend(pos);
     if(markers[s.uuid])return;
     var p=el('div','pin pop'+(s.destacado?' hot':''),(s.nome||'?').charAt(0).toUpperCase());p.style.animationDelay=(n++*60)+'ms';
     var w=el('div','pw');w.append(p);
@@ -653,7 +657,7 @@ function swapPage(nd){
   $('#ponto-data').textContent=nd.querySelector('#ponto-data').textContent;
   put('#hslides',nd);put('.story .wrap',nd);put('#gal',nd);
   var ng=nd.querySelector('#gal');$('#gal').hidden=ng?ng.hasAttribute('hidden'):true;
-  var sb=$('.near .sub'),nb=nd.querySelector('.near .sub');if(sb&&nb)sb.textContent=nb.textContent;
+  var sb=$('.near .sub'),nb=nd.querySelector('.near .sub');if(sb&&nb){sb.textContent=nb.textContent;delete sb.dataset.o}
   put('#shops',nd);$('#shops').setAttribute('aria-busy','false');   // o #map fica: a instância do Google é reaproveitada
   put('#explorar .wrap',nd);
   readState();
