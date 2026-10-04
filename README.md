@@ -16,6 +16,18 @@ O **Guia Tour API** é o motor de backend para uma plataforma de turismo intelig
 - **Rastreamento de Eventos:** Monitoramento de interações (cliques em cards, rotas, WhatsApp) para análise de métricas.
 - **Renderização Híbrida:** Suporte a respostas em JSON para aplicações mobile/SPA e SSR (Server-Side Rendering) para páginas SEO-friendly.
 
+## 🌐 Endpoints Principais da API
+
+A API está organizada em rotas modulares gerenciadas pelos controllers:
+
+- **Autenticação (`/login`):** Geração e validação de tokens JWT, autenticação de usuários e lojistas com hash seguro (BCrypt).
+- **Lojas (`/lojas`):** CRUD completo e gestão de estabelecimentos parceiros e dados cadastrais.
+- **Portfólios (`/portifolio`):** Gerenciamento e renderização de portfólios e páginas digitais das lojas.
+- **Vendedores (`/vendedores`):** Gestão de vendedores, comissões, cadastros e vínculos comerciais.
+- **Pontos Turísticos (`/pontos`):** Cadastro, histórico, geolocalização e mídias de pontos de interesse.
+- **Público (`/publico`):** Endpoints abertos para consulta pública de guias, listagem otimizada e renderização SSR amigável para SEO.
+- **Asaas (`/asaas`):** Integração de pagamentos e cobranças com a plataforma Asaas.
+
 ## 🛠️ Tecnologias e Dependências
 
 A aplicação foi construída utilizando o ecossistema **Lazarus/Free Pascal**:

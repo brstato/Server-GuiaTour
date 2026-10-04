@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Horse, uTlogincontroller, utlojacontroller,
   uportifoliocontroller, utvendedorcontroller, utPontoscontroller,
-  utguiatourpublicocontroller,            // <-- NOVO
+  utguiatourpublicocontroller, utasaascontroller,            // <-- NOVO
   fpjson;
 type
 
@@ -26,10 +26,6 @@ implementation
 
 { tAppRouter }
 
-procedure onStatus(Req: THorseRequest; Res: THorseResponse; next: TNextProc);
-begin
-     Res.ContentType('text/html').Send('<h1>Server on-line</h1>');
-end;
 
 class procedure tAppRouter.load_routes();
 begin
@@ -38,7 +34,8 @@ begin
     TPortifolioController.RegisterRoutes;
     TVendedorController.RegisterRoutes;
     TPontoTuristicoController.RegisterRoutes;
-    TGuiaTourPublicoController.RegisterRoutes;   // <-- NOVO
+    TGuiaTourPublicoController.RegisterRoutes;
+    TAsaasController.RegisterRoutes;
 end;
 
 
