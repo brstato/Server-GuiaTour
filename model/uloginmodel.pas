@@ -48,14 +48,14 @@ type
   private
       const GoogleCheckUrl: string = 'https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=';
       class function TrocarCodeEEmailGoogle(const g_code: string;
-              out g_mail, g_name: string; out status_code: integer): Boolean;      
+              out g_mail, g_name: string; out status_code: integer): Boolean;
     public
       class function updateRefreshToken(r_token, id: string):UTF8String;
       class function updateJWT(uuid: string; tipo: string = 'loja'): string;
       class function LoginGoogle(const g_code: string; out status_code: integer;
               r_token: string = ''): UTF8String;
       class function LoginGoogleVendedor(const g_code: string;
-              out status_code: integer; r_token: string = ''): UTF8String;              
+              out status_code: integer; r_token: string = ''): UTF8String;
   end;
 
 implementation
@@ -145,18 +145,24 @@ var
    refreshToken, token, tipo: string;
    jsonData: TJSONObject;
    recordcount, expire, agora: integer;
+   vencida: Boolean;
 
 begin
   jsonData := TJSONObject.Create;
   tipo := '';
+  vencida := False;
   queryData := nil;
   try
     queryData := TGetData.getData(
-      'select expire from loja where refresh_token = :refresh_token and uuid = :uuid',
+      'select expire, validade from loja where refresh_token = :refresh_token and uuid = :uuid',
       [r_token, id], True
     );
     if queryData.RecordCount = 1 then
-      tipo := 'loja'
+    begin
+      tipo := 'loja';
+      // loja vencida continua entrando no painel (para pagar); o front decide a tela
+      vencida := DateOf(queryData.FieldByName('validade').AsDateTime) < DateOf(Now);
+    end
     else
     begin
       queryData.Free;
@@ -184,6 +190,8 @@ begin
 
       jsonData.Add('r_token', refreshToken);
       jsonData.Add('token', token);
+      jsonData.Add('tipo', tipo);
+      jsonData.Add('vencida', vencida);
       jsonData.Add('status', '200');
     end
     else
@@ -226,9 +234,11 @@ var
    jsonObject, JsonData: TJSONObject;
    g_mail, g_name, idResult, refreshToken, token, tipo: string;
    expire: integer;
+   vencida: Boolean;
 begin
      jsonObject := TJSONObject.Create;
      dataset := nil;
+     vencida := False;
      status_code := 401;
      try
        if not TrocarCodeEEmailGoogle(g_code, g_mail, g_name, status_code) then
@@ -260,12 +270,10 @@ begin
          else
          begin
            idResult := dataset.FieldByName('uuid').AsString;
-           if DateOf(dataset.FieldByName('validade').AsDateTime) < DateOf(Now) then
-           begin
-             status_code := 403;
-             jsonObject.Add('status', '403');
-             Exit(jsonObject.AsJSON);
-           end;
+           // Loja vencida AGORA entra no painel (para poder pagar a mensalidade).
+           // A página pública sai do ar sozinha: o catálogo e /loja/:slug já filtram
+           // por validade >= hoje. O front usa "vencida" para abrir a tela de assinatura.
+           vencida := DateOf(dataset.FieldByName('validade').AsDateTime) < DateOf(Now);
          end;
        end;
 
@@ -293,6 +301,7 @@ begin
        jsonObject.Add('message', JsonData);
        jsonObject.Add('id_loja', idResult); // mantido por compatibilidade com o front atual
        jsonObject.Add('tipo', tipo);        // NOVO — front usa isso pra decidir a tela
+       jsonObject.Add('vencida', vencida);  // true = mensalidade vencida: front abre a assinatura
 
        status_code := 200;
        Result := jsonObject.AsJSON;
@@ -362,4 +371,3 @@ begin
 end;
 
 end.
-

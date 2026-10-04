@@ -12,9 +12,9 @@ unit uasaas;
     env=sandbox                     ; sandbox | production
     user_agent=guiatour
     webhook_token=<32 a 255 caracteres, diferente da api_key>
-    plan_value=49.90                ; mensalidade, ponto decimal
-    plan_desc=Mensalidade Guia Tour
     grace_days=3                    ; tolerância depois do ciclo pago
+
+  Os planos (nome, valor, ciclo) ficam na tabela ASAAS_PLANO (ver asaas_planos.sql).
 
   Se a chave não estiver no config.ini, cai para a variável de ambiente ASAAS_<CHAVE>
   em maiúsculas (ex.: ASAAS_API_KEY).
@@ -25,7 +25,8 @@ unit uasaas;
 interface
 
 uses
-  Classes, SysUtils, fpjson, jsonparser, fphttpclient, opensslsockets, uconfig;
+  Classes, SysUtils, DateUtils, fpjson, jsonparser, fphttpclient,
+  opensslsockets, uconfig;
 
 type
   EAsaasError = class(Exception)
@@ -55,6 +56,8 @@ type
       AExternalReference: string): TJSONObject;
     function CancelSubscription(const AId: string): TJSONObject;
     function ListSubscriptionPayments(const AId: string): TJSONObject;
+    // QR Code Pix da cobrança: encodedImage (base64), payload (copia e cola), expirationDate
+    function GetPixQrCode(const APaymentId: string): TJSONObject;
   end;
 
 { Configuração }
@@ -71,7 +74,8 @@ function DateToIso(ADate: TDateTime): string;
 function OnlyDigits(const S: string): string;
 function NormalizaCelular(const S: string): string;      // 10/11 dígitos ou ''
 function SafeEquals(const A, B: string): Boolean;        // tempo constante
-function CycleDays(const ACycle: string): Integer;
+// Data em que termina o ciclo que começa em ADueDate (usa o calendário: 15/01 -> 15/02, 31/01 -> 28/02)
+function FimDoCiclo(ADueDate: TDateTime; const ACycle: string): TDateTime;
 function AsaasErrorText(E: EAsaasError): string;
 
 implementation
@@ -197,16 +201,16 @@ begin
   Result := Diff = 0;
 end;
 
-function CycleDays(const ACycle: string): Integer;
+function FimDoCiclo(ADueDate: TDateTime; const ACycle: string): TDateTime;
 begin
-  if ACycle = 'WEEKLY' then Result := 7
-  else if ACycle = 'BIWEEKLY' then Result := 14
-  else if ACycle = 'MONTHLY' then Result := 31
-  else if ACycle = 'BIMONTHLY' then Result := 62
-  else if ACycle = 'QUARTERLY' then Result := 92
-  else if ACycle = 'SEMIANNUALLY' then Result := 183
-  else if ACycle = 'YEARLY' then Result := 366
-  else Result := 31;
+  if ACycle = 'WEEKLY' then Result := IncDay(ADueDate, 7)
+  else if ACycle = 'BIWEEKLY' then Result := IncDay(ADueDate, 14)
+  else if ACycle = 'MONTHLY' then Result := IncMonth(ADueDate, 1)
+  else if ACycle = 'BIMONTHLY' then Result := IncMonth(ADueDate, 2)
+  else if ACycle = 'QUARTERLY' then Result := IncMonth(ADueDate, 3)
+  else if ACycle = 'SEMIANNUALLY' then Result := IncMonth(ADueDate, 6)
+  else if ACycle = 'YEARLY' then Result := IncMonth(ADueDate, 12)
+  else Result := IncMonth(ADueDate, 1);
 end;
 
 function AsaasErrorText(E: EAsaasError): string;
@@ -365,6 +369,11 @@ end;
 function TAsaasClient.ListSubscriptionPayments(const AId: string): TJSONObject;
 begin
   Result := Request('GET', '/subscriptions/' + AId + '/payments', nil);
+end;
+
+function TAsaasClient.GetPixQrCode(const APaymentId: string): TJSONObject;
+begin
+  Result := Request('GET', '/payments/' + APaymentId + '/pixQrCode', nil);
 end;
 
 end.

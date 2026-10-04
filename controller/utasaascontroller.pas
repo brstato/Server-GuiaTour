@@ -4,18 +4,23 @@ unit utasaascontroller;
 
 {
   Rotas:
-    POST api/v1/assinatura/checkout   (JWT)  cria cliente + assinatura, devolve link da fatura
-    GET  api/v1/assinatura            (JWT)  situação da assinatura, validade e últimas cobranças
+    GET  api/v1/assinatura/planos     (JWT)  catálogo de planos (tabela ASAAS_PLANO)
+    POST api/v1/assinatura/checkout   (JWT)  corpo: plano, forma_pagamento, cpf_cnpj?, id_loja?
+                                             cria cliente + assinatura; devolve link da fatura
+                                             e, se for Pix, o QR Code já na resposta
+    GET  api/v1/assinatura            (JWT)  status, validade, últimas cobranças
+    GET  api/v1/assinatura/pix        (JWT)  QR Code Pix da cobrança em aberto
     POST api/v1/assinatura/cancelar   (JWT)  cancela a assinatura (acesso segue até a validade)
     POST api/v1/webhooks/asaas        (PÚBLICA) eventos do Asaas, autenticada pelo header
                                       asaas-access-token (config.ini [asaas] webhook_token)
 
   Quem pode chamar as rotas com JWT:
     - tipo "loja":     age sempre sobre a PRÓPRIA loja (UUID do token); id_loja é ignorado.
-    - tipo "vendedor": informa id_loja (UUID) no corpo ou na query e só passa se
+    - tipo "vendedor": informa id_loja (UUID) no corpo (POST) ou na query (GET) e só passa se
                        TVendedorModel.DonoDaLoja(vendedor, loja) for verdadeiro.
-  Como a loja vencida leva 403 no login, o caminho normal de cobrança é o vendedor gerar
-  o checkout e mandar o invoice_url para o comerciante (WhatsApp).
+
+  Formas de pagamento aceitas: PIX, BOLETO, CREDIT_CARD. O cartão é digitado na página da
+  fatura do Asaas (invoice_url): o servidor nunca recebe dados de cartão.
 }
 
 interface
@@ -35,12 +40,14 @@ type
 
 implementation
 
-const
-  CICLO_PADRAO = 'MONTHLY';
-
 procedure LogAsaas(const AMsg: string);
 begin
   WriteLn(FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss', Now) + ' [asaas] ' + AMsg);
+end;
+
+function FormaPagamentoValida(const AForma: string): Boolean;
+begin
+  Result := (AForma = 'PIX') or (AForma = 'BOLETO') or (AForma = 'CREDIT_CARD');
 end;
 
 // Descobre qual loja (UUID) a requisição pode operar. False = já respondeu 4xx.
@@ -103,15 +110,61 @@ begin
     d.Free;
 end;
 
+// Monta {payload, qr_base64, expira_em} a partir da resposta do Asaas; nil se não vier QR
+function PixJson(AClient: TAsaasClient; const APaymentId: string): TJSONObject;
+var
+  qr: TJSONObject;
+begin
+  Result := nil;
+  if APaymentId = '' then Exit;
+  try
+    qr := AClient.GetPixQrCode(APaymentId);
+    try
+      if JsonStr(qr, 'payload') = '' then Exit;
+      Result := TJSONObject.Create;
+      Result.Add('payload', JsonStr(qr, 'payload'));
+      Result.Add('qr_base64', JsonStr(qr, 'encodedImage'));
+      Result.Add('expira_em', JsonStr(qr, 'expirationDate'));
+    finally
+      qr.Free;
+    end;
+  except
+    on E: Exception do
+    begin
+      // sem QR o front cai no link da fatura (que também mostra o Pix)
+      LogAsaas('pixQrCode ' + APaymentId + ': ' + E.Message);
+      FreeAndNil(Result);
+    end;
+  end;
+end;
+
+{ ------------------------------------------------------------------- planos }
+
+procedure HandlePlanos(Req: THorseRequest; Res: THorseResponse; next: TNextProc);
+var
+  outJson: TJSONObject;
+begin
+  try
+    outJson := TAsaasModel.ListarPlanos;
+    TJsonView.SendResponseJsonObject(Res, outJson, 200);
+  except
+    on E: Exception do
+    begin
+      LogAsaas('planos: ' + E.Message);
+      TJsonView.SendError(Res, 500, 'Falha ao listar planos.');
+    end;
+  end;
+end;
+
 { ----------------------------------------------------------------- checkout }
 
 procedure HandleCheckout(Req: THorseRequest; Res: THorseResponse; next: TNextProc);
 var
-  body, cust, subResp, pays, outJson: TJSONObject;
-  uuid, cpfCnpj, customerId, subId, invoiceUrl, desc: string;
+  body, cust, subResp, pays, firstPay, outJson, planoJson, pix: TJSONObject;
+  uuid, cpfCnpj, customerId, subId, invoiceUrl, paymentId, forma, codigoPlano: string;
   loja: TLojaAsaas;
   atual: TAssinaturaAsaas;
-  valor: Double;
+  plano: TPlanoAsaas;
   vencimento: TDateTime;
   client: TAsaasClient;
   arr: TJSONArray;
@@ -127,27 +180,35 @@ begin
 
     if not ResolverLoja(Req, Res, body, uuid) then Exit;
 
-    // o valor é do servidor (config.ini), nunca vem do cliente
-    valor := AsaasCfgFloat('plan_value', 0);
-    if valor <= 0 then
+    // plano e forma de pagamento são validados no servidor; o VALOR vem da tabela ASAAS_PLANO
+    forma := UpperCase(body.Get('forma_pagamento', ''));
+    if not FormaPagamentoValida(forma) then
     begin
-      LogAsaas('plan_value não configurado');
-      TJsonView.SendError(Res, 500, 'Plano não configurado.');
+      TJsonView.SendError(Res, 400, 'Escolha a forma de pagamento: PIX, BOLETO ou CREDIT_CARD.');
       Exit;
     end;
 
-    cpfCnpj := OnlyDigits(body.Get('cpf_cnpj', ''));
-    if (Length(cpfCnpj) <> 11) and (Length(cpfCnpj) <> 14) then
-    begin
-      TJsonView.SendError(Res, 400, 'Informe um CPF ou CNPJ válido.');
-      Exit;
-    end;
-
+    codigoPlano := body.Get('plano', '');
     try
+      plano := TAsaasModel.GetPlano(codigoPlano);
+      if not plano.Found then
+      begin
+        TJsonView.SendError(Res, 400, 'Plano inválido.');
+        Exit;
+      end;
+
       loja := TAsaasModel.GetLoja(uuid);
       if not loja.Found then
       begin
         TJsonView.SendError(Res, 404, 'Loja não encontrada.');
+        Exit;
+      end;
+
+      // CPF/CNPJ só é exigido na primeira vez (quando o cliente ainda não existe no Asaas)
+      cpfCnpj := OnlyDigits(body.Get('cpf_cnpj', ''));
+      if (loja.CustomerId = '') and (Length(cpfCnpj) <> 11) and (Length(cpfCnpj) <> 14) then
+      begin
+        TJsonView.SendError(Res, 400, 'Informe um CPF ou CNPJ válido.');
         Exit;
       end;
 
@@ -182,11 +243,8 @@ begin
       if (loja.Validade <> 0) and (DateOf(loja.Validade) > vencimento) then
         vencimento := DateOf(loja.Validade);
 
-      desc := AsaasCfg('plan_desc', 'Mensalidade Guia Tour');
-
-      // UNDEFINED: o comerciante escolhe Pix, boleto ou cartão na página da fatura
-      subResp := client.CreateSubscription(customerId, 'UNDEFINED', valor,
-        DateToIso(vencimento), CICLO_PADRAO, desc, loja.Uuid);
+      subResp := client.CreateSubscription(customerId, forma, plano.Valor,
+        DateToIso(vencimento), plano.Ciclo, 'Guia Tour - ' + plano.Nome, loja.Uuid);
       try
         subId := JsonStr(subResp, 'id');
       finally
@@ -195,10 +253,12 @@ begin
       if subId = '' then
         raise Exception.Create('Asaas não retornou o id da assinatura');
 
-      TAsaasModel.InserirAssinatura(loja.Id, customerId, subId, valor, CICLO_PADRAO);
+      TAsaasModel.InserirAssinatura(loja.Id, customerId, subId, plano.Valor,
+        plano.Ciclo, forma, plano.Codigo);
 
-      // link da primeira fatura (se ainda não existir, o painel consulta GET api/v1/assinatura)
+      // 1ª cobrança: link da fatura (+ QR Code se for Pix)
       invoiceUrl := '';
+      paymentId := '';
       pays := client.ListSubscriptionPayments(subId);
       try
         if pays.Find('data') is TJSONArray then
@@ -206,8 +266,10 @@ begin
           arr := TJSONArray(pays.Find('data'));
           if (arr.Count > 0) and (arr.Items[0] is TJSONObject) then
           begin
-            invoiceUrl := JsonStr(TJSONObject(arr.Items[0]), 'invoiceUrl');
-            TAsaasModel.UpsertPagamento(TJSONObject(arr.Items[0]));
+            firstPay := TJSONObject(arr.Items[0]);
+            paymentId := JsonStr(firstPay, 'id');
+            invoiceUrl := JsonStr(firstPay, 'invoiceUrl');
+            TAsaasModel.UpsertPagamento(firstPay);
           end;
         end;
       finally
@@ -217,7 +279,23 @@ begin
       outJson := TJSONObject.Create;
       outJson.Add('assinatura', subId);
       outJson.Add('status', 'PENDENTE');
+      outJson.Add('forma_pagamento', forma);
       outJson.Add('invoice_url', invoiceUrl);
+
+      planoJson := TJSONObject.Create;
+      planoJson.Add('codigo', plano.Codigo);
+      planoJson.Add('nome', plano.Nome);
+      planoJson.Add('valor', plano.Valor);
+      planoJson.Add('ciclo', plano.Ciclo);
+      outJson.Add('plano', planoJson);
+
+      if forma = 'PIX' then
+      begin
+        pix := PixJson(client, paymentId);
+        if pix <> nil then
+          outJson.Add('pix', pix);
+      end;
+
       TJsonView.SendResponseJsonObject(Res, outJson, 201);
     except
       on E: EAsaasError do
@@ -254,6 +332,8 @@ begin
       Exit;
     end;
     outJson := TAsaasModel.StatusJson(loja.Id, loja.Validade);
+    // o front só pede CPF/CNPJ quando o cliente ainda não existe no Asaas
+    outJson.Add('precisa_documento', loja.CustomerId = '');
     TJsonView.SendResponseJsonObject(Res, outJson, 200);
   except
     on E: Exception do
@@ -261,6 +341,61 @@ begin
       LogAsaas('status loja ' + uuid + ': ' + E.Message);
       TJsonView.SendError(Res, 500, 'Falha ao consultar assinatura.');
     end;
+  end;
+end;
+
+{ --------------------------------------------------------------------- pix }
+
+procedure HandlePix(Req: THorseRequest; Res: THorseResponse; next: TNextProc);
+var
+  uuid, paymentId: string;
+  loja: TLojaAsaas;
+  atual: TAssinaturaAsaas;
+  client: TAsaasClient;
+  pix: TJSONObject;
+begin
+  if not ResolverLoja(Req, Res, nil, uuid) then Exit;
+  client := nil;
+  try
+    try
+      loja := TAsaasModel.GetLoja(uuid);
+      if not loja.Found then
+      begin
+        TJsonView.SendError(Res, 404, 'Loja não encontrada.');
+        Exit;
+      end;
+
+      atual := TAsaasModel.UltimaAssinatura(loja.Id);
+      if (not atual.Found) or (atual.Status = 'CANCELADA') then
+      begin
+        TJsonView.SendError(Res, 404, 'Nenhuma assinatura em andamento.');
+        Exit;
+      end;
+
+      paymentId := TAsaasModel.PagamentoEmAberto(atual.SubscriptionId);
+      if paymentId = '' then
+      begin
+        TJsonView.SendError(Res, 404, 'Nenhuma cobrança em aberto.');
+        Exit;
+      end;
+
+      client := TAsaasClient.FromConfig;
+      pix := PixJson(client, paymentId);
+      if pix = nil then
+      begin
+        TJsonView.SendError(Res, 502, 'Não foi possível gerar o QR Code Pix agora.');
+        Exit;
+      end;
+      TJsonView.SendResponseJsonObject(Res, pix, 200);
+    except
+      on E: Exception do
+      begin
+        LogAsaas('pix loja ' + uuid + ': ' + E.Message);
+        TJsonView.SendError(Res, 500, 'Falha ao obter o QR Code.');
+      end;
+    end;
+  finally
+    client.Free;
   end;
 end;
 
@@ -379,7 +514,13 @@ end;
 class procedure TAsaasController.RegisterRoutes();
 begin
   THorse.AddCallback(HorseJWT(TConfig.Token))
+    .Get('api/v1/assinatura/planos', HandlePlanos);
+
+  THorse.AddCallback(HorseJWT(TConfig.Token))
     .Post('api/v1/assinatura/checkout', HandleCheckout);
+
+  THorse.AddCallback(HorseJWT(TConfig.Token))
+    .Get('api/v1/assinatura/pix', HandlePix);
 
   THorse.AddCallback(HorseJWT(TConfig.Token))
     .Get('api/v1/assinatura', HandleStatus);
