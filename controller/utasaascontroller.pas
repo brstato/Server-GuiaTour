@@ -12,22 +12,21 @@ unit utasaascontroller;
     GET  api/v1/assinatura/pix        (JWT)  QR Code Pix da cobrança em aberto
     POST api/v1/assinatura/cancelar   (JWT)  cancela a assinatura (acesso segue até a validade)
     POST api/v1/webhooks/asaas        (PÚBLICA) eventos do Asaas, autenticada pelo header
-                                      asaas-access-token (config.ini [asaas] webhook_token)
+                                       asaas-access-token (config.ini [asaas] webhook_token)
 
   Quem pode chamar as rotas com JWT:
     - tipo "loja":     age sempre sobre a PRÓPRIA loja (UUID do token); id_loja é ignorado.
-    - tipo "vendedor": informa id_loja (UUID) no corpo (POST) ou na query (GET) e só passa se
-                       TVendedorModel.DonoDaLoja(vendedor, loja) for verdadeiro.
-
-  Formas de pagamento aceitas: PIX, BOLETO, CREDIT_CARD. O cartão é digitado na página da
-  fatura do Asaas (invoice_url): o servidor nunca recebe dados de cartão.
+    - tipo "vendedor": exige vendedor ATIVO e dono da loja. Se AAdminPode for True (checkout, status, pix),
+                       o vendedor ADMINISTRADOR (ATIVO e ADM) também pode operar qualquer loja.
+                       Cancelamento (HandleCancel) é exclusivo do dono.
 }
 
 interface
 
 uses
-  Classes, SysUtils, Horse, Horse.JWT, fpjson, jsonparser, DateUtils,
-  udata, uconfig, uJsonView, uvendedormodel, uasaas, uasaasmodel;
+  Classes, SysUtils, SyncObjs, Horse, Horse.JWT, fpjson, jsonparser, DateUtils,
+  udata, uconfig, uJsonView, uvendedormodel, uasaas, uasaasmodel, uautorizacao,
+  uratelimit;
 
 type
 
@@ -40,6 +39,36 @@ type
 
 implementation
 
+var
+  GCheckoutLock: TCriticalSection;
+  GCheckoutLojas: TStringList;
+
+function EntrarCheckout(const AUuidLoja: string): Boolean;
+begin
+  GCheckoutLock.Enter;
+  try
+    Result := GCheckoutLojas.IndexOf(AUuidLoja) < 0;
+    if Result then
+      GCheckoutLojas.Add(AUuidLoja);
+  finally
+    GCheckoutLock.Leave;
+  end;
+end;
+
+procedure SairCheckout(const AUuidLoja: string);
+var
+  i: Integer;
+begin
+  GCheckoutLock.Enter;
+  try
+    i := GCheckoutLojas.IndexOf(AUuidLoja);
+    if i >= 0 then
+      GCheckoutLojas.Delete(i);
+  finally
+    GCheckoutLock.Leave;
+  end;
+end;
+
 procedure LogAsaas(const AMsg: string);
 begin
   WriteLn(FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss', Now) + ' [asaas] ' + AMsg);
@@ -48,49 +77,6 @@ end;
 function FormaPagamentoValida(const AForma: string): Boolean;
 begin
   Result := (AForma = 'PIX') or (AForma = 'BOLETO') or (AForma = 'CREDIT_CARD');
-end;
-
-// Descobre qual loja (UUID) a requisição pode operar. False = já respondeu 4xx.
-function ResolverLoja(Req: THorseRequest; Res: THorseResponse;
-  ABody: TJSONObject; out AUuidLoja: string): Boolean;
-var
-  auth, tipo, idToken: string;
-begin
-  Result := False;
-  AUuidLoja := '';
-
-  auth := Req.Headers['Authorization'];
-  idToken := TDataModule1.GetIdLoja(auth);
-  tipo := TDataModule1.GetTipoUsuario(auth);
-
-  if idToken = '' then
-  begin
-    TJsonView.SendError(Res, 401, 'Não autenticado.');
-    Exit;
-  end;
-
-  if tipo = 'vendedor' then
-  begin
-    if ABody <> nil then
-      AUuidLoja := ABody.Get('id_loja', '');
-    if AUuidLoja = '' then
-      AUuidLoja := Req.Query['id_loja'];
-
-    if AUuidLoja = '' then
-    begin
-      TJsonView.SendError(Res, 400, 'Informe o id_loja.');
-      Exit;
-    end;
-    if not TVendedorModel.DonoDaLoja(idToken, AUuidLoja) then
-    begin
-      TJsonView.SendError(Res, 403, 'Esta loja não pertence a este vendedor.');
-      Exit;
-    end;
-  end
-  else
-    AUuidLoja := idToken;
-
-  Result := True;
 end;
 
 function ParseBody(Req: THorseRequest): TJSONObject;
@@ -131,7 +117,6 @@ begin
   except
     on E: Exception do
     begin
-      // sem QR o front cai no link da fatura (que também mostra o Pix)
       LogAsaas('pixQrCode ' + APaymentId + ': ' + E.Message);
       FreeAndNil(Result);
     end;
@@ -168,9 +153,11 @@ var
   vencimento: TDateTime;
   client: TAsaasClient;
   arr: TJSONArray;
+  comoAdmin, emCheckout: Boolean;
 begin
   body := ParseBody(Req);
   client := nil;
+  emCheckout := False;
   try
     if body = nil then
     begin
@@ -178,9 +165,15 @@ begin
       Exit;
     end;
 
-    if not ResolverLoja(Req, Res, body, uuid) then Exit;
+    if not TAutorizacao.ResolverLoja(Req, Res, body, True, uuid, comoAdmin) then Exit;
 
-    // plano e forma de pagamento são validados no servidor; o VALOR vem da tabela ASAAS_PLANO
+    if not EntrarCheckout(uuid) then
+    begin
+      TJsonView.SendError(Res, 409, 'Já existe uma cobrança sendo gerada para esta loja. Aguarde alguns segundos.');
+      Exit;
+    end;
+    emCheckout := True;
+
     forma := UpperCase(body.Get('forma_pagamento', ''));
     if not FormaPagamentoValida(forma) then
     begin
@@ -204,7 +197,6 @@ begin
         Exit;
       end;
 
-      // CPF/CNPJ só é exigido na primeira vez (quando o cliente ainda não existe no Asaas)
       cpfCnpj := OnlyDigits(body.Get('cpf_cnpj', ''));
       if (loja.CustomerId = '') and (Length(cpfCnpj) <> 11) and (Length(cpfCnpj) <> 14) then
       begin
@@ -212,7 +204,6 @@ begin
         Exit;
       end;
 
-      // evita assinatura duplicada (duplo clique / retry)
       atual := TAsaasModel.UltimaAssinatura(loja.Id);
       if atual.Found and ((atual.Status = 'PENDENTE') or (atual.Status = 'ATIVA')
          or (atual.Status = 'INADIMPLENTE')) then
@@ -220,6 +211,16 @@ begin
         TJsonView.SendError(Res, 409, 'Já existe uma assinatura em andamento.');
         Exit;
       end;
+
+      if not TDedupe.Permitir('checkout:' + TDataModule1.GetIdLoja(Req.Headers['Authorization']), 3000) then
+      begin
+        TJsonView.SendError(Res, 429, 'Muitas tentativas. Aguarde alguns segundos.');
+        Exit;
+      end;
+
+      if comoAdmin then
+        TVendedorModel.RegistrarLog(TDataModule1.GetIdLoja(Req.Headers['Authorization']),
+          loja.Uuid, 'adm_iniciou_cobranca');
 
       client := TAsaasClient.FromConfig;
 
@@ -238,7 +239,6 @@ begin
         TAsaasModel.SalvarCustomerId(loja.Id, customerId);
       end;
 
-      // 1º vencimento = hoje ou o fim da validade atual (não desperdiça o período já pago/teste)
       vencimento := DateOf(Now);
       if (loja.Validade <> 0) and (DateOf(loja.Validade) > vencimento) then
         vencimento := DateOf(loja.Validade);
@@ -256,7 +256,6 @@ begin
       TAsaasModel.InserirAssinatura(loja.Id, customerId, subId, plano.Valor,
         plano.Ciclo, forma, plano.Codigo);
 
-      // 1ª cobrança: link da fatura (+ QR Code se for Pix)
       invoiceUrl := '';
       paymentId := '';
       pays := client.ListSubscriptionPayments(subId);
@@ -310,6 +309,8 @@ begin
       end;
     end;
   finally
+    if emCheckout then
+      SairCheckout(uuid);
     client.Free;
     body.Free;
   end;
@@ -322,8 +323,9 @@ var
   uuid: string;
   loja: TLojaAsaas;
   outJson: TJSONObject;
+  comoAdmin: Boolean;
 begin
-  if not ResolverLoja(Req, Res, nil, uuid) then Exit;
+  if not TAutorizacao.ResolverLoja(Req, Res, nil, True, uuid, comoAdmin) then Exit;
   try
     loja := TAsaasModel.GetLoja(uuid);
     if not loja.Found then
@@ -332,7 +334,6 @@ begin
       Exit;
     end;
     outJson := TAsaasModel.StatusJson(loja.Id, loja.Validade);
-    // o front só pede CPF/CNPJ quando o cliente ainda não existe no Asaas
     outJson.Add('precisa_documento', loja.CustomerId = '');
     TJsonView.SendResponseJsonObject(Res, outJson, 200);
   except
@@ -353,8 +354,9 @@ var
   atual: TAssinaturaAsaas;
   client: TAsaasClient;
   pix: TJSONObject;
+  comoAdmin: Boolean;
 begin
-  if not ResolverLoja(Req, Res, nil, uuid) then Exit;
+  if not TAutorizacao.ResolverLoja(Req, Res, nil, True, uuid, comoAdmin) then Exit;
   client := nil;
   try
     try
@@ -408,11 +410,12 @@ var
   loja: TLojaAsaas;
   atual: TAssinaturaAsaas;
   client: TAsaasClient;
+  comoAdmin: Boolean;
 begin
   body := ParseBody(Req);
   client := nil;
   try
-    if not ResolverLoja(Req, Res, body, uuid) then Exit;
+    if not TAutorizacao.ResolverLoja(Req, Res, body, False, uuid, comoAdmin) then Exit;
     try
       loja := TAsaasModel.GetLoja(uuid);
       if not loja.Found then
@@ -432,7 +435,6 @@ begin
       r := client.CancelSubscription(atual.SubscriptionId);
       r.Free;
 
-      // a loja continua com acesso até loja.validade (já pago)
       TAsaasModel.SetStatusAssinatura(atual.SubscriptionId, 'CANCELADA');
       TJsonView.SendSuccess(Res, 'Assinatura cancelada.');
     except
@@ -482,7 +484,6 @@ begin
     eventType := JsonStr(root, 'event');
 
     try
-      // entrega "at least once": o mesmo evento pode chegar mais de uma vez
       if (eventId <> '') and TAsaasModel.EventoProcessado(eventId) then
       begin
         TJsonView.SendSuccess(Res, 'Evento já processado.');
@@ -498,8 +499,6 @@ begin
     except
       on E: Exception do
       begin
-        // 500 faz o Asaas reenviar. Falhas repetidas pausam a fila de webhooks:
-        // acompanhe este log.
         LogAsaas('erro processando ' + eventType + ' ' + eventId + ': ' + E.Message);
         TJsonView.SendError(Res, 500, 'Falha ao processar.');
       end;
@@ -528,8 +527,15 @@ begin
   THorse.AddCallback(HorseJWT(TConfig.Token))
     .Post('api/v1/assinatura/cancelar', HandleCancel);
 
-  // pública: a autenticação é o header asaas-access-token
   THorse.Post('api/v1/webhooks/asaas', HandleWebhook);
 end;
+
+initialization
+  GCheckoutLock := TCriticalSection.Create;
+  GCheckoutLojas := TStringList.Create;
+
+finalization
+  GCheckoutLojas.Free;
+  GCheckoutLock.Free;
 
 end.

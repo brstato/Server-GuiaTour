@@ -403,7 +403,7 @@ begin
         exit;
       end;
 
-      id_loja := TDataModule1.GetTargetIdLoja(req.Headers['Authorization'], json_req);
+      if not TAutorizacao.ResolverLojaDono(req, res, json_req, id_loja) then Exit;
 
       nome    := TSecurityService.SanitizeInput(json_req.get('nome',    ''));
       apelido := TSecurityService.SanitizeInput(json_req.get('apelido', ''));

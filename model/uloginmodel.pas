@@ -167,7 +167,7 @@ begin
     begin
       queryData.Free;
       queryData := TGetData.getData(
-        'select expire from vendedor where refresh_token = :refresh_token and uuid = :uuid',
+        'select expire from vendedor where refresh_token = :refresh_token and uuid = :uuid and ativo = TRUE;',
         [r_token, id], True
       );
       if queryData.RecordCount = 1 then

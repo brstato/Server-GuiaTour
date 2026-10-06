@@ -7,7 +7,8 @@ interface
 uses
   Classes, SysUtils, Horse, uTlogincontroller, utlojacontroller,
   uportifoliocontroller, utvendedorcontroller, utPontoscontroller,
-  utguiatourpublicocontroller, utasaascontroller,            // <-- NOVO
+  utguiatourpublicocontroller, utasaascontroller,
+  utadmincontroller,
   fpjson;
 type
 
@@ -36,6 +37,7 @@ begin
     TPontoTuristicoController.RegisterRoutes;
     TGuiaTourPublicoController.RegisterRoutes;
     TAsaasController.RegisterRoutes;
+    TAdminController.RegisterRoutes;
 end;
 
 

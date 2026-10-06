@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Horse, uloginmodel, uvendedormodel, uJsonView, fpjson,
-  udata, uconfig, usecurityservice, Horse.JWT;
+  udata, uconfig, usecurityservice, Horse.JWT, uautorizacao;
 
 type
 
@@ -65,19 +65,9 @@ end;
 
 function ExigirDonoDaLoja(Req: THorseRequest; Res: THorseResponse;
         const uuidLoja: string; out idVendedor: string): Boolean;
-var
-  tipo: string;
 begin
   Result := False;
-  tipo := TDataModule1.GetTipoUsuario(Req.Headers['Authorization']);
-
-  if tipo <> 'vendedor' then
-  begin
-    TJsonView.SendError(Res, 403, 'Acesso restrito a vendedores.');
-    Exit;
-  end;
-
-  idVendedor := TDataModule1.GetIdLoja(Req.Headers['Authorization']); // claim 'id'
+  if not TAutorizacao.ExigirVendedorAtivo(Req, Res, idVendedor) then Exit;
 
   if Trim(uuidLoja) = '' then
   begin
@@ -96,21 +86,14 @@ end;
 
 procedure HandlerListarComercios(Req: THorseRequest; Res: THorseResponse; next: TNextProc);
 var
-  idVendedor, tipo: string;
+  idVendedor: string;
   arrayItens: TJSONArray;
   jsonRes: TJSONObject;
 begin
   arrayItens := nil;
   jsonRes := nil;
   try
-    tipo := TDataModule1.GetTipoUsuario(Req.Headers['Authorization']);
-    if tipo <> 'vendedor' then
-    begin
-      TJsonView.SendError(Res, 403, 'Acesso restrito a vendedores.');
-      Exit;
-    end;
-
-    idVendedor := TDataModule1.GetIdLoja(Req.Headers['Authorization']);
+    if not TAutorizacao.ExigirVendedorAtivo(Req, Res, idVendedor) then Exit;
     arrayItens := TVendedorModel.ListarComercios(idVendedor);
 
     jsonRes := TJSONObject.Create;
@@ -131,17 +114,12 @@ procedure HandlerCriarComercio(Req: THorseRequest; Res: THorseResponse; next: TN
 var
   RequestJson: TJSONObject;
   vendorList: TVendorList;
-  tipo, uuidLoja: string;
+  idVendedor, uuidLoja: string;
 begin
   RequestJson := nil;
   try
     try
-      tipo := TDataModule1.GetTipoUsuario(Req.Headers['Authorization']);
-      if tipo <> 'vendedor' then
-      begin
-        TJsonView.SendError(Res, 403, 'Acesso restrito a vendedores.');
-        Exit;
-      end;
+      if not TAutorizacao.ExigirVendedorAtivo(Req, Res, idVendedor) then Exit;
 
       if Trim(Req.Body) = '' then
       begin
@@ -149,7 +127,7 @@ begin
         Exit;
       end;
 
-      vendorList.idVendedor := TDataModule1.GetIdLoja(Req.Headers['Authorization']);
+      vendorList.idVendedor := idVendedor;
       RequestJson := TJSONObject(GetJSON(Req.Body));
 
       with vendorList do
