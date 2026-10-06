@@ -106,6 +106,8 @@ var
   DecodedStr: string;
   StringStream: TStringStream;
 begin
+  // Valida a imagem ANTES de tudo, fora do try (nada a liberar se recusar). O nome que o
+  // cliente mandou NÃO é usado: o arquivo é gravado como ID_GUID.ext, ext pelos bytes.
   if not TArquivoSeguro.Preparar(id_loja, base64_str, caminho_salvar, url_banco, DecodedStr) then
     raise Exception.Create('Imagem inválida: envie JPEG, PNG ou WEBP de até 8 MB.');
   dataset := nil;
@@ -126,6 +128,7 @@ begin
       DeleteImageFile(foto_capa_antiga);
 
     // Salvar nova imagem
+    // caminho, url e bytes já preparados e validados no início da função (TArquivoSeguro)
     StringStream := TStringStream.Create(DecodedStr);
     StringStream.SaveToFile(caminho_salvar);
 
@@ -417,6 +420,8 @@ var
   DecodedStr: string;
   StringStream: TStringStream;
 begin
+  // Valida a imagem ANTES de tudo, fora do try (nada a liberar se recusar). O nome que o
+  // cliente mandou NÃO é usado: o arquivo é gravado como ID_GUID.ext, ext pelos bytes.
   if not TArquivoSeguro.Preparar(id_loja, base64_str, caminho_salvar, url_banco, DecodedStr) then
     raise Exception.Create('Imagem inválida: envie JPEG, PNG ou WEBP de até 8 MB.');
   dataset := nil;
@@ -429,6 +434,7 @@ begin
     dataset.Free;
 
     // Salvar nova imagem
+    // caminho, url e bytes já preparados e validados no início da função (TArquivoSeguro)
     StringStream := TStringStream.Create(DecodedStr);
     StringStream.SaveToFile(caminho_salvar);
 
@@ -445,8 +451,8 @@ begin
     if avatar_antigo <> '' then
       DeleteImageFile(avatar_antigo);
   finally
-    if Assigned(StringStream) then StringStream.Free;
-    if Assigned(dataset) then dataset.Free;
+    StringStream.Free;
+    dataset.Free;
   end;
 end;
 
@@ -457,6 +463,8 @@ var
   DecodedStr: string;
   StringStream: TStringStream;
 begin
+  // Valida a imagem ANTES de tudo, fora do try (nada a liberar se recusar). O nome que o
+  // cliente mandou NÃO é usado: o arquivo é gravado como ID_GUID.ext, ext pelos bytes.
   if not TArquivoSeguro.Preparar(id_loja, base64_str, caminho_salvar, url_banco, DecodedStr) then
     raise Exception.Create('Imagem inválida: envie JPEG, PNG ou WEBP de até 8 MB.');
   dataset := nil;
@@ -469,6 +477,7 @@ begin
     dataset.Free;
 
     // Salvar nova imagem
+    // caminho, url e bytes já preparados e validados no início da função (TArquivoSeguro)
     StringStream := TStringStream.Create(DecodedStr);
     StringStream.SaveToFile(caminho_salvar);
 
@@ -486,8 +495,8 @@ begin
 
     Result := dataset.Fields[0].AsInteger;
   finally
-    if Assigned(dataset) then dataset.Free;
-    if Assigned(StringStream) then StringStream.Free;
+    dataset.Free;
+    StringStream.Free;
   end;
 end;
 
@@ -525,14 +534,16 @@ end;
 class procedure TProtifolioModel.UploadFoto(var id_site: integer; var nome,
   base64Str, id_loja: string);
 var
-  caminho_salvar, url_banco, DecodedStr: string;
+  caminho_salvar, url_banco, url_relativa, DecodedStr: string;
   StringStream: TStringStream;
 begin
+  // Valida a imagem ANTES de tudo, fora do try. O nome do cliente NÃO é usado.
   if not TArquivoSeguro.Preparar(id_loja, base64Str, caminho_salvar, url_banco, DecodedStr) then
     raise Exception.Create('Imagem inválida: envie JPEG, PNG ou WEBP de até 8 MB.');
   StringStream := nil;
   try
     StringStream := TStringStream.Create(DecodedStr);
+
     StringStream.SaveToFile(caminho_salvar);
 
     TGetData.getData(
@@ -540,7 +551,7 @@ begin
       [id_site, url_banco]
     );
   finally
-    if Assigned(StringStream) then StringStream.Free;
+    StringStream.Free;
   end;
 end;
 

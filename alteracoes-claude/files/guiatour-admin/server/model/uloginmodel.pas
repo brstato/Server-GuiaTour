@@ -1,0 +1,373 @@
+unit uloginmodel;
+
+{$mode delphi}{$H+}
+
+interface
+
+uses
+  Classes,
+  SysUtils,
+  BCrypt,
+  sql_queries,
+  uconfig,
+  udata,
+  fpjson,
+  LazJWT,
+  DateUtils,
+  db,
+  ugetdata,
+  uNetService,
+  ulojamodel,
+  jsonparser,
+  RESTRequest4D;
+
+type
+  TLoginDados = Record
+    id,
+    refreshToken,
+    token,
+    Url,
+    vencimento,
+    agora: string;
+    expire: integer;
+    bloqueado: boolean;
+    dataValidade: TDateTime;
+  end;
+
+type
+  TReturn = Record
+    jsonString: string;
+    json: TJSONObject;
+    valido: Boolean;
+  end;
+
+type
+  { TLoginModel }
+
+  TLoginModel = Class
+  private
+      const GoogleCheckUrl: string = 'https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=';
+      class function TrocarCodeEEmailGoogle(const g_code: string;
+              out g_mail, g_name: string; out status_code: integer): Boolean;
+    public
+      class function updateRefreshToken(r_token, id: string):UTF8String;
+      class function updateJWT(uuid: string; tipo: string = 'loja'): string;
+      class function LoginGoogle(const g_code: string; out status_code: integer;
+              r_token: string = ''): UTF8String;
+      class function LoginGoogleVendedor(const g_code: string;
+              out status_code: integer; r_token: string = ''): UTF8String;
+  end;
+
+implementation
+
+
+class function TLoginModel.TrocarCodeEEmailGoogle(const g_code: string;
+        out g_mail, g_name: string; out status_code: integer): Boolean;
+var
+  JsonTokenReq, GoogleTokenRes, GoogleUserRes: TJSONObject;
+  AccessToken: string;
+  TokenResponse, UserInfoResponse: IResponse;
+begin
+  Result := False;
+  g_mail := '';
+  g_name := '';
+  GoogleTokenRes := nil;
+  GoogleUserRes  := nil;
+
+  // -------------------------------------------------------------------------
+  // ETAPA 1: Trocar o g_code pelo Access Token (Validação de Segurança)
+  // -------------------------------------------------------------------------
+  JsonTokenReq := TJSONObject.Create;
+  try
+    JsonTokenReq.Add('client_id',     TConfig.ConfigValue('google', 'client_id',     ''));
+    JsonTokenReq.Add('client_secret', TConfig.ConfigValue('google', 'client_secret', ''));
+    JsonTokenReq.Add('code',          g_code);
+    JsonTokenReq.Add('grant_type',    'authorization_code');
+    JsonTokenReq.Add('redirect_uri',  'postmessage'); // DEVE ser idêntico ao do frontend
+
+    TokenResponse := TRequest.New.BaseURL('https://oauth2.googleapis.com/token')
+      .ContentType('application/json')
+      .AddBody(JsonTokenReq.AsJSON)
+      .Post;
+
+    if TokenResponse.StatusCode <> 200 then
+    begin
+      status_code := 401;
+      Exit(False);
+    end;
+
+    GoogleTokenRes := TJSONObject(GetJSON(TokenResponse.Content));
+    AccessToken := GoogleTokenRes.Get('access_token', '');
+  finally
+    JsonTokenReq.Free;
+    if Assigned(GoogleTokenRes) then GoogleTokenRes.Free;
+  end;
+
+  // -------------------------------------------------------------------------
+  // ETAPA 2: Obter dados do usuário (Email e Nome) com o Access Token
+  // -------------------------------------------------------------------------
+  UserInfoResponse := TRequest.New.BaseURL('https://www.googleapis.com/oauth2/v2/userinfo')
+    .AddHeader('Authorization', 'Bearer ' + AccessToken)
+    .Get;
+
+  if UserInfoResponse.StatusCode <> 200 then
+  begin
+    status_code := 401;
+    Exit(False);
+  end;
+
+  GoogleUserRes := TJSONObject(GetJSON(UserInfoResponse.Content));
+  try
+    g_mail := GoogleUserRes.Get('email', '');
+    g_name := GoogleUserRes.Get('name', '');
+  finally
+    GoogleUserRes.Free;
+  end;
+
+  Result := g_mail <> '';
+  if not Result then
+    status_code := 401;
+end;
+
+
+function createRefreshToken: string;
+var
+   uuid: TGuid;
+begin
+  CreateGUID(uuid);
+  Result := TBCrypt.GenerateHash(GUIDToString(uuid));
+end;
+
+
+class function TLoginModel.updateRefreshToken(r_token, id: string): UTF8String;
+var
+   queryData: TDataSet;
+   refreshToken, token, tipo: string;
+   jsonData: TJSONObject;
+   recordcount, expire, agora: integer;
+   vencida: Boolean;
+
+begin
+  jsonData := TJSONObject.Create;
+  tipo := '';
+  vencida := False;
+  queryData := nil;
+  try
+    queryData := TGetData.getData(
+      'select expire, validade from loja where refresh_token = :refresh_token and uuid = :uuid',
+      [r_token, id], True
+    );
+    if queryData.RecordCount = 1 then
+    begin
+      tipo := 'loja';
+      // loja vencida continua entrando no painel (para pagar); o front decide a tela
+      vencida := DateOf(queryData.FieldByName('validade').AsDateTime) < DateOf(Now);
+    end
+    else
+    begin
+      queryData.Free;
+      queryData := TGetData.getData(
+        'select expire from vendedor where refresh_token = :refresh_token and uuid = :uuid and ativo = TRUE',
+        [r_token, id], True
+      );
+      if queryData.RecordCount = 1 then
+        tipo := 'vendedor';
+    end;
+
+    if (tipo <> '') and (queryData.FieldByName('expire').AsInteger >= DateTimeToUnix(now)) then
+    begin
+      token := updateJWT(id, tipo);
+      refreshToken := createRefreshToken;
+
+      if tipo = 'loja' then
+        TGetData.getData(
+          'update loja set refresh_token = :token, expire = :expire where uuid = :uuid;',
+          [refreshToken, DateTimeToUnix(IncMonth(now, 1)), id], False)
+      else
+        TGetData.getData(
+          'update vendedor set refresh_token = :token, expire = :expire where uuid = :uuid;',
+          [refreshToken, DateTimeToUnix(IncMonth(now, 1)), id], False);
+
+      jsonData.Add('r_token', refreshToken);
+      jsonData.Add('token', token);
+      jsonData.Add('tipo', tipo);
+      jsonData.Add('vencida', vencida);
+      jsonData.Add('status', '200');
+    end
+    else
+    begin
+      jsonData.Add('r_token', '');
+      jsonData.Add('token', '');
+      jsonData.Add('status', '401');
+    end;
+  finally
+    if Assigned(queryData) then queryData.Free;
+    Result := jsonData.AsJSON;
+    jsonData.Free;
+  end;
+end;
+
+
+class function TLoginModel.updateJWT(uuid: string; tipo: string = 'loja'): string;
+var
+   tokenString: string;
+begin
+  try
+    tokenString := TLazJWT.New
+           .SecretJWT(TConfig.Token)
+           .Exp(DateTimeToUnix(IncHour(now, 1)))
+           .AddClaim('id', uuid)
+           .AddClaim('tipo', tipo)
+           .AddClaim('Exp', DateTimeToUnix(IncMonth(now, 1)))
+           .Token;
+
+  finally
+    Result:=tokenString;
+  end;
+end;
+
+
+class function TLoginModel.LoginGoogle(const g_code: string; out status_code: integer;
+        r_token: string = ''): UTF8String;
+var
+   dataset: TDataSet;
+   jsonObject, JsonData: TJSONObject;
+   g_mail, g_name, idResult, refreshToken, token, tipo: string;
+   expire: integer;
+   vencida: Boolean;
+begin
+     jsonObject := TJSONObject.Create;
+     dataset := nil;
+     vencida := False;
+     status_code := 401;
+     try
+       if not TrocarCodeEEmailGoogle(g_code, g_mail, g_name, status_code) then
+       begin
+         jsonObject.Add('message', 'Falha ao autenticar com o Google.');
+         Exit(jsonObject.AsJSON);
+       end;
+
+       // 1) Verifica primeiro se é um vendedor cadastrado (nunca auto-cria aqui)
+       dataset := TGetData.getData(
+         'SELECT uuid FROM vendedor WHERE email = :email AND ativo = TRUE',
+         [g_mail], True
+       );
+
+       if not dataset.IsEmpty then
+       begin
+         tipo := 'vendedor';
+         idResult := dataset.FieldByName('uuid').AsString;
+       end
+       else
+       begin
+         // 2) Senão, segue o fluxo de loja de sempre (busca ou auto-cria)
+         dataset.Free;
+         dataset := TGetData.getData('SELECT uuid, validade FROM loja WHERE email = :email', [g_mail], True);
+         tipo := 'loja';
+
+         if dataset.IsEmpty then
+           idResult := TLojaModel.createloja(g_name, g_mail)
+         else
+         begin
+           idResult := dataset.FieldByName('uuid').AsString;
+           // Loja vencida AGORA entra no painel (para poder pagar a mensalidade).
+           // A página pública sai do ar sozinha: o catálogo e /loja/:slug já filtram
+           // por validade >= hoje. O front usa "vencida" para abrir a tela de assinatura.
+           vencida := DateOf(dataset.FieldByName('validade').AsDateTime) < DateOf(Now);
+         end;
+       end;
+
+       refreshToken := createRefreshToken;
+       expire := DateTimeToUnix(IncMonth(Now, 1));
+
+       if tipo = 'loja' then
+         TGetData.getData(
+           'update loja set refresh_token = :token, expire = :expire, ' +
+           'google_refresh_token = :r_token where uuid = :uuid;',
+           [refreshToken, expire, r_token, idResult], False)
+       else
+         TGetData.getData(
+           'update vendedor set refresh_token = :token, expire = :expire where uuid = :uuid;',
+           [refreshToken, expire, idResult], False);
+
+       token := updateJWT(idResult, tipo);
+
+       JsonData := TJSONObject.Create;
+       JsonData.Add('id', idResult);
+
+       jsonObject.Add('status', '200');
+       jsonObject.Add('token', token);
+       jsonObject.Add('r_token', refreshToken);
+       jsonObject.Add('message', JsonData);
+       jsonObject.Add('id_loja', idResult); // mantido por compatibilidade com o front atual
+       jsonObject.Add('tipo', tipo);        // NOVO — front usa isso pra decidir a tela
+       jsonObject.Add('vencida', vencida);  // true = mensalidade vencida: front abre a assinatura
+
+       status_code := 200;
+       Result := jsonObject.AsJSON;
+     finally
+       if Assigned(dataset) then dataset.Free;
+       jsonObject.Free;
+     end;
+end;
+
+class function TLoginModel.LoginGoogleVendedor(const g_code: string;
+        out status_code: integer; r_token: string = ''): UTF8String;
+var
+   dataset: TDataSet;
+   jsonObject, JsonTokenReq, GoogleTokenRes, GoogleUserRes: TJSONObject;
+   AccessToken, g_mail, g_name: string;
+   TokenResponse, UserInfoResponse: IResponse;
+   idVendedor, refreshToken: string;
+   token: string;
+   expire: integer;
+begin
+     jsonObject := TJSONObject.Create;
+     status_code := 401;
+     try
+       // Etapas 1 e 2 são idênticas ao LoginGoogle (trocar g_code por access_token,
+       // buscar e-mail) — extraia para uma função privada compartilhada
+       // TrocarCodeEEmailGoogle(g_code, AccessToken, g_mail) pra não duplicar.
+       if not TrocarCodeEEmailGoogle(g_code, g_mail, g_name, status_code) then
+       begin
+         jsonObject.Add('message', 'Falha ao autenticar com o Google.');
+         Exit(jsonObject.AsJSON);
+       end;
+
+       // Diferença chave: SEM auto-criação. Só quem já está cadastrado
+       // manualmente em VENDEDOR, e ATIVO, consegue logar.
+       dataset := TGetData.getData(
+         'SELECT uuid FROM vendedor WHERE email = :email AND ativo = TRUE',
+         [g_mail], True
+       );
+
+       if dataset.IsEmpty then
+       begin
+         status_code := 403;
+         jsonObject.Add('message', 'E-mail não autorizado como vendedor.');
+         Exit(jsonObject.AsJSON);
+       end;
+
+       idVendedor := dataset.FieldByName('uuid').AsString;
+       refreshToken := createRefreshToken;
+       expire := DateTimeToUnix(IncMonth(Now, 1));
+
+       TGetData.getData(
+         'update vendedor set refresh_token = :token, expire = :expire where uuid = :uuid;',
+         [refreshToken, expire, idVendedor]
+       );
+
+       token := updateJWT(idVendedor, 'vendedor');
+
+       jsonObject.Add('token', token);
+       jsonObject.Add('r_token', refreshToken);
+       jsonObject.Add('id_vendedor', idVendedor);
+       status_code := 200;
+
+       Result := jsonObject.AsJSON;
+     finally
+       jsonObject.Free;
+     end;
+end;
+
+end.

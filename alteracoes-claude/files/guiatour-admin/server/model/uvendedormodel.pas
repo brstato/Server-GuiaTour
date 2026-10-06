@@ -135,6 +135,9 @@ begin
       uuidString := StringReplace(StringReplace(GUIDToString(uuid),
                       '{', '', [rfReplaceAll]), '}', '', [rfReplaceAll]);
 
+      // Valida e prepara as 3 imagens ANTES de inserir qualquer coisa: se alguma for
+      // inválida, nada é gravado (nem a loja). Vazia = sem imagem. O nome que o cliente
+      // mandou NÃO é usado (nome final = uuid_GUID.ext, ext pelos bytes).
       if (vendor.avatar <> '') and not TArquivoSeguro.Preparar(uuidString, vendor.avatar,
            caminho_salvar_avatar, url_banco_avatar, DecodedStrAvatar) then
         raise Exception.Create('Avatar inválido: envie JPEG, PNG ou WEBP de até 8 MB.');
@@ -184,7 +187,6 @@ begin
       );
 
       idLoja := dataSet.Fields[0].AsString;
-      FreeAndNil(dataSet);
 
       if caminho_salvar_avatar <> '' then
       begin
@@ -224,7 +226,6 @@ begin
       );
 
       idSite := dataSet.Fields[0].AsInteger;
-      FreeAndNil(dataSet);
 
       jsonData := GetJSON(vendor.trabalhos);
 
@@ -236,6 +237,7 @@ begin
         begin
            itemTrabalho := arrayTrabalhos.Objects[i];
 
+           // foto inválida é ignorada (nada é gravado); a loja já foi criada acima
            if not TArquivoSeguro.Preparar(uuidString, itemTrabalho.Strings['itemTrabalho'],
                 caminho_salvar, url_banco, DecodedStr) then
              Continue;
@@ -257,8 +259,8 @@ begin
       raise;
     end;
   finally
-      if Assigned(StringStream) then StringStream.Free;
-      if Assigned(dataset) then dataset.Free;
+      StringStream.Free;
+      dataset.Free;
   end;
 end;
 

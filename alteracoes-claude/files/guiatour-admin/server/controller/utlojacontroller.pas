@@ -6,8 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Horse, ulojamodel, uJsonView, fpjson,
-  sql_queries, udata, ucacheservice, Horse.JWT, usecurityservice, uconfig,
-  uautorizacao;
+  sql_queries, udata, uautorizacao, ucacheservice, Horse.JWT, usecurityservice, uconfig;
 
 type
 
@@ -29,6 +28,7 @@ var
    LModel: TLojaModel;
    id: string;
 begin
+   // só a própria loja ou o vendedor dono (a resposta traz o meta_long_token)
    if not TAutorizacao.ResolverLojaDono(Req, Res, nil, id) then Exit;
 
    LModel := TLojaModel.Create;
@@ -403,7 +403,7 @@ begin
         exit;
       end;
 
-      id_loja := TDataModule1.GetTargetIdLoja(req.Headers['Authorization'], json_req);
+      if not TAutorizacao.ResolverLojaDono(req, res, json_req, id_loja) then Exit;
 
       nome    := TSecurityService.SanitizeInput(json_req.get('nome',    ''));
       apelido := TSecurityService.SanitizeInput(json_req.get('apelido', ''));
@@ -448,6 +448,11 @@ begin
         end;
 
         if not TAutorizacao.ResolverLojaDono(req, res, json_req, id_loja) then Exit;
+        if id_loja = '' then
+        begin
+          TJsonView.SendError(res, 400, 'Id não informado.');
+          exit;
+        end;
 
         telefone := json_req.Find('telefone' ).AsString;
         email    := json_req.Find('email'    ).AsString;
@@ -488,6 +493,11 @@ begin
       end;
 
       if not TAutorizacao.ResolverLojaDono(req, res, jsonReq, id_loja) then Exit;
+      if (id_loja = '') or (id_loja.IsEmpty) then
+      begin
+        TJsonView.SendError(res, 400, 'Id não informado.');
+        exit;
+      end;
 
       cep         := TSecurityService.SanitizeInput(Trim(jsonReq.Get('cep',         '')));
       endereco    := TSecurityService.SanitizeInput(Trim(jsonReq.Get('endereco',    '')));
@@ -576,6 +586,11 @@ begin
       end;
 
       if not TAutorizacao.ResolverLojaDono(req, res, jsonReq, id_loja) then Exit;
+      if (id_loja = '') or (id_loja.IsEmpty) then
+      begin
+        TJsonView.SendError(res, 400, 'Id não informado.');
+        exit;
+      end;
 
       g_analytcs       := jsonReq.Get('g_analytcs',      '');
       meta_pixel_id    := jsonReq.Get('meta_pixel_id',   '');

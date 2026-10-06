@@ -8,6 +8,8 @@ uses
   Classes,
   SysUtils,
   Horse,
+  uautorizacao,
+  uadminmodel,
   uportifolioview,
   uJsonView,
   uportifoliomodel,
@@ -19,9 +21,7 @@ uses
   usecurityservice,
   uconfig,
   upontoturisticomodel,
-  uguiatourpontoview,
-  uautorizacao,
-  uadminmodel;
+  uguiatourpontoview;
 
 type
 
@@ -231,7 +231,14 @@ var
 begin
   jsonres := nil;
   try
+    // só a própria loja ou o vendedor dono
     if not TAutorizacao.ResolverLojaDono(req, res, nil, id_loja) then Exit;
+
+    if Trim(id_loja) = '' then
+    begin
+      TJsonView.SendError(res, 400, 'Parâmetro id_loja é obrigatório.');
+      Exit;
+    end;
 
     jsonres := TProtifolioModel.GetPortfolio(id_loja);
 
@@ -275,6 +282,7 @@ begin
         exit;
       end;
 
+      // id da foto é sequencial: confere se a foto é de uma loja que o chamador pode alterar
       if not TAutorizacao.ExigirAcessoAFoto(req, res, id) then Exit;
 
       TProtifolioModel.RemoveItem(id);
@@ -311,16 +319,23 @@ begin
 
       if not TAutorizacao.ResolverLojaDono(req, res, jsonreq, id_loja) then Exit;
 
+      if id_loja = '' then
+      begin
+        TJsonView.SendError(res, 401, 'Token inválido ou sem id_loja.');
+        Exit;
+      end;
+
       id_site      := jsonreq.Get('id_site', 0);
       nome_arquivo := jsonreq.Get('nome_arquivo', '');
       base64_str   := jsonreq.Get('imagem_base64', '');
 
-      if base64_str = '' then
+      if (id_loja = '') or (base64_str = '') then
       begin
         TJsonView.SendError(res, 400, 'Dados inválidos.');
         Exit;
       end;
 
+      // id_site vem do cliente: só aceita o site desta mesma loja
       if not TAdminModel.SiteDaLoja(id_site, id_loja) then
       begin
         TJsonView.SendError(res, 403, 'Este site não pertence a esta loja.');
@@ -386,11 +401,17 @@ begin
 
       if not TAutorizacao.ResolverLojaDono(req, res, jsonreq, id_loja) then Exit;
 
+      if id_loja = '' then
+      begin
+        TJsonView.SendError(res, 401, 'Token inválido ou sem id_loja.');
+        Exit;
+      end;
+
       id_site      := jsonreq.Get('id_site', 0);
       nome_arquivo := jsonreq.Get('nome_arquivo', '');
       base64_str   := jsonreq.Get('imagem_base64', '');
 
-      if base64_str = '' then
+      if (id_loja = '') or (base64_str = '') then
       begin
         TJsonView.SendError(res, 400, 'Dados inválidos.');
         Exit;
@@ -437,11 +458,17 @@ begin
 
       if not TAutorizacao.ResolverLojaDono(req, res, jsonreq, id_loja) then Exit;
 
+      if id_loja = '' then
+      begin
+        TJsonView.SendError(res, 401, 'Token inválido ou sem id_loja.');
+        Exit;
+      end;
+
       id_site      := jsonreq.Get('id_site',        0);
       nome_arquivo := jsonreq.Get('nome_arquivo',  '');
       base64_str   := jsonreq.Get('imagem_base64', '');
 
-      if base64_str = '' then
+      if (id_loja = '') or (base64_str = '') then
       begin
         TJsonView.SendError(res, 400, 'Dados inválidos.');
         Exit;
@@ -481,6 +508,11 @@ begin
       end;
 
       if not TAutorizacao.ResolverLojaDono(req, res, json_req, id_loja) then Exit;
+      if Id_Loja = '' then
+      begin
+        TJsonView.SendError(res, 400, 'Id não encontrado.');
+        exit;
+      end;
 
       titulo   := TSecurityService.SanitizeInput(json_req.find('titulo'   ).AsString);
       subtitulo:= TSecurityService.SanitizeInput(json_req.find('subtitulo').AsString);
@@ -525,11 +557,17 @@ begin
 
       if not TAutorizacao.ResolverLojaDono(req, res, jsonreq, id_loja) then Exit;
 
+      if id_loja = '' then
+      begin
+        TJsonView.SendError(res, 401, 'Token inválido ou sem id_loja.');
+        Exit;
+      end;
+
       id_site      := jsonreq.Get('id_site',       0);
       nome_arquivo := jsonreq.Get('nome_arquivo', '');
       base64_str   := jsonreq.Get('imagem_base64','');
 
-      if base64_str = '' then
+      if (id_loja = '') or (base64_str = '') then
       begin
         TJsonView.SendError(res, 400, 'Dados inválidos.');
         Exit;

@@ -79,10 +79,6 @@ begin
   if Result = '' then Result := 'loja'; // tokens antigos, emitidos antes desta mudança, continuam valendo como loja
 end;
 
-
-
-
-
 procedure TDataModule1.DataModuleDestroy(Sender: TObject);
 begin
   ZConnection1.Disconnect;

@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Horse, uJsonView, fpjson, uguiatourutils,
-  udata, uconfig, usecurityservice, upontoturisticomodel, Horse.JWT;
+  udata, uconfig, usecurityservice, uautorizacao, upontoturisticomodel, Horse.JWT;
 
 type
 
@@ -24,20 +24,9 @@ implementation
 
 function ExigirVendedor(Req: THorseRequest; Res: THorseResponse;
         out idVendedor: string): Boolean;
-var
-  tipo: string;
 begin
-  Result := False;
-  tipo := TDataModule1.GetTipoUsuario(Req.Headers['Authorization']);
-
-  if tipo <> 'vendedor' then
-  begin
-    TJsonView.SendError(Res, 403, 'Acesso restrito a vendedores.');
-    Exit;
-  end;
-
-  idVendedor := TDataModule1.GetIdLoja(Req.Headers['Authorization']); // claim 'id'
-  Result := True;
+  // tipo vendedor E ativo agora (o JWT pode ser de antes de o vendedor ser desativado)
+  Result := TAutorizacao.ExigirVendedorAtivo(Req, Res, idVendedor);
 end;
 
 function ExigirDonoDoPonto(Req: THorseRequest; Res: THorseResponse;
@@ -183,7 +172,7 @@ begin
     jsonRes := TJSONObject.Create;
     jsonRes.Add('itens', arrayItens);
 
-    Res.AddHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
+    Res.AddHeader('Cache-Control', 'no-store');
     TJsonView.SendResponseJsonObject(Res, jsonRes, 200);
   except on e: Exception do
     begin
@@ -578,8 +567,6 @@ begin
   end;
 end;
 
-
-
 class procedure TPontoTuristicoController.RegisterRoutes();
 begin
   THorse.AddCallback(HorseJWT(TConfig.Token))
@@ -599,9 +586,6 @@ begin
 
   THorse.AddCallback(HorseJWT(TConfig.Token))
   .Delete('api/v1/vendedor/ponto-turistico/:uuid/galeria/:idFoto', HandlerRemoverFotoGaleria);
-
-  THorse.AddCallback(HorseJWT(TConfig.Token))
-  .Post('api/v1/portfolio/remove', HandlerRemoveItem);
 
   // --- Público (sem JWT) ---
   THorse.Get('api/v1/ponto/:slug', HandlerGetPontoPublico);
