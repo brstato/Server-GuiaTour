@@ -36,6 +36,7 @@ var
    error: string;
    DM: TDataModule1;
    isSelect: Boolean;
+   j: integer;
 begin
   isSelect := Pos('SELECT', UpperCase(Trim(ASqlText))) = 1;
   Result := nil;
@@ -61,6 +62,11 @@ begin
 
         query.Open;
         Result.FieldDefs.Assign(query.FieldDefs);
+        // O Zeos herda o NOT NULL da coluna de origem, mesmo quando ela vem de
+        // um LEFT JOIN e pode ser NULL. O TMemDataset é só um espelho dos dados
+        // já lidos, então nunca deve exigir valor (senão: "Field X is required").
+        for j := 0 to Result.FieldDefs.Count - 1 do
+          Result.FieldDefs[j].Required := False;
         Result.CreateTable;
         Result.Open;
         query.First;
@@ -68,9 +74,9 @@ begin
         while not query.eof do
         begin
           Result.Append;
-          For i := 0 to query.FieldCount -1 do
+          for i := 0 to query.FieldCount - 1 do
             Result.Fields[i].Value := query.Fields[i].Value;
-            Result.Post;
+          Result.Post;
           query.next;
         end;
         Result.First;
@@ -106,4 +112,3 @@ end;
 end;
 
 end.
-

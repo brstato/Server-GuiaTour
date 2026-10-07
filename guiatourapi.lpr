@@ -15,7 +15,8 @@ uses
   uTlogincontroller, utlojacontroller, uportifoliocontroller, uloginmodel,
   ulojamodel, uportifoliomodel, uvendedormodel, Horse, utvendedorcontroller,
   utPontoscontroller, utguiatourpublicocontroller, upontoturisticomodel,
-  ubuscamodel, ueventomodel, uguiatourseo, uasaas, uasaasmodel, utasaascontroller
+  ubuscamodel, ueventomodel, uguiatourseo, uasaas, uarquivoseguro, uautorizacao,
+  uasaasmodel, uadminmodel, utasaascontroller, utadmincontroller
   ;
 
 type
