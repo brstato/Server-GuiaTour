@@ -21,7 +21,8 @@ uses
   upontoturisticomodel,
   uguiatourpontoview,
   uautorizacao,
-  uadminmodel;
+  uadminmodel,
+  uguiatourutils;
 
 type
 
@@ -164,9 +165,10 @@ procedure HandlePortifolioUpdate(req: THorseRequest; res: THorseResponse;
   next: TNextProc);
 var
   jsonreq, jsonres: TJSONObject;
-  id_loja, titulo, subtitulo, avatar, foto_bio, bio: string;
+  id_loja, titulo, subtitulo, avatar, foto_bio, bio, url_video: string;
   id_site: integer;
-  lJSONData: TJSONData;
+  lJSONData, f: TJSONData;
+  url_video_enviado: Boolean;
 begin
   jsonreq := nil;
   jsonres := nil;
@@ -190,9 +192,19 @@ begin
       bio       := TSecurityService.SanitizeInput(jsonreq.Get('bio',       ''));
       id_site   := jsonreq.Get('id_site', 0);
 
+      url_video := Trim(jsonreq.Get('url_video', ''));
+      f := jsonreq.Find('url_video');
+      url_video_enviado := Assigned(f) and (f.JSONType in [jtString, jtNull]);
+
       if (id_loja = '') then
       begin
         TJsonView.SendError(res, 400, 'O ID da Loja é obrigatório.');
+        Exit;
+      end;
+
+      if url_video_enviado and not UrlVideoValida(url_video) then
+      begin
+        TJsonView.SendError(res, 400, 'URL de vídeo inválida. Use um link https do YouTube ou Vimeo.');
         Exit;
       end;
 
@@ -202,8 +214,12 @@ begin
         subtitulo,
         avatar,
         foto_bio,
-        bio
+        bio,
+        url_video
       );
+
+      if url_video_enviado then
+        TProtifolioModel.AtualizarUrlVideo(id_loja, url_video);
 
       jsonres := TJSONObject.Create;
 
@@ -467,8 +483,10 @@ end;
 procedure HandlePortifolioUpdateBasico(req: THorseRequest; res: THorseResponse;
   next: TNextProc);
 var
-  id_loja, titulo, subtitulo, bio: string;
+  id_loja, titulo, subtitulo, bio, url_video: string;
   json_req: TJSONObject;
+  f: TJSONData;
+  url_video_enviado: Boolean;
 begin
   json_req := nil;
   try
@@ -486,7 +504,20 @@ begin
       subtitulo:= TSecurityService.SanitizeInput(json_req.find('subtitulo').AsString);
       bio      := TSecurityService.SanitizeInput(json_req.find('bio'      ).AsString);
 
+      url_video := Trim(json_req.Get('url_video', ''));
+      f := json_req.Find('url_video');
+      url_video_enviado := Assigned(f) and (f.JSONType in [jtString, jtNull]);
+
+      if url_video_enviado and not UrlVideoValida(url_video) then
+      begin
+        TJsonView.SendError(res, 400, 'URL de vídeo inválida. Use um link https do YouTube ou Vimeo.');
+        Exit;
+      end;
+
       TProtifolioModel.PortifolioUpdateBasico(id_loja, titulo, subtitulo, bio);
+
+      if url_video_enviado then
+        TProtifolioModel.AtualizarUrlVideo(id_loja, url_video);
 
       TJsonView.SendSuccess(res);
     except on e:exception do

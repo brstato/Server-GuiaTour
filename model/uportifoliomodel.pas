@@ -38,6 +38,7 @@ type
     meta_pixel  : string;
     slug        : string;
     foto_capa   : string;
+    UrlVideo    : string;
     CategoriaSlug:string;
     CategoriaNome:string;
     RatingValue : string;
@@ -56,7 +57,7 @@ type
     class function UpdateFotoCapa(const nome_arquivo, id_loja, base64_str: string): integer;
     class function GetBySlug(const Slug: string): TComercioPerfil;
     class procedure SavePortfolio(const IDLoja, Titulo, Subtitulo, Avatar,
-      FotoBio, Bio: string);
+      FotoBio, Bio, url_video: string);
     class function GetPortfolio(var id_loja: string): TJSONObject;
     class function GetGaleria(var id_portfolio: integer): TJSONObject;
     class function UpdateAvatar(var id_site: integer; const nome_arquivo, id_loja, base64_str: string): integer;
@@ -65,6 +66,7 @@ type
     class procedure UploadFoto(var id_site: integer; var nome, base64Str,
       id_loja: string);
     class procedure PortifolioUpdateBasico(id, titulo, subtitulo, bio: string);
+    class procedure AtualizarUrlVideo(const id_loja, url_video: string);
     class function GetDepoimentosAprovadosJson(const id_loja: string): string;
     class function GetDepoimentosPendentesJson(const id_loja: string): TJSONArray;
     class procedure AprovarDepoimento(id: integer);
@@ -172,7 +174,7 @@ begin
 
           dataset := TGetData.getData(
             'SELECT S.ID AS SITE_ID, S.TITULO, S.SUBTITULO, '+
-            'S.AVATAR, S.FOTO_BIO, S.BIO, S.FOTO_CAPA, '+
+            'S.AVATAR, S.FOTO_BIO, S.BIO, S.FOTO_CAPA, S.URL_VIDEO, '+
 
             'L.TELEFONE AS WHATSAPP, L.ENDERECO, L.NUMERO, L.BAIRRO, '+
             'L.COMPLEMENTO, L.HORARIOS, L.CIDADE, L.UF, L.CEP, '+
@@ -213,9 +215,10 @@ begin
                  Result.meta_pixel := dataset.FieldByName('META_PIXEL_ID'      ).AsString;
                  Result.slug       := dataset.FieldByName('SLUG'               ).AsString;
                  Result.foto_capa  := dataset.FieldByName('FOTO_CAPA'          ).AsString;
+                 Result.UrlVideo   := dataset.FieldByName('URL_VIDEO'          ).AsString;
                  Result.UUid       := dataset.FieldByName('UUID'               ).AsString;
-                 Result.UUid       := dataset.FieldByName('LATITUDE'           ).AsString;
-                 Result.UUid       := dataset.FieldByName('LONGITUDE'          ).AsString;
+                 Result.Latitude   := dataset.FieldByName('LATITUDE'           ).AsString;
+                 Result.Longitude  := dataset.FieldByName('LONGITUDE'          ).AsString;
 
                  Result.RatingValue := '';
                  Result.RatingCount := 0;
@@ -328,20 +331,34 @@ begin
 end;
 
 class procedure TProtifolioModel.SavePortfolio(const IDLoja, Titulo, Subtitulo,
-  Avatar, FotoBio, Bio: string);
+  Avatar, FotoBio, Bio, url_video: string);
 begin
   try
       TGetData.getData(
         'UPDATE OR INSERT INTO SITE ' +
-        '(ID_LOJA_EX, TITULO, SUBTITULO, AVATAR, FOTO_BIO, BIO) ' +
-        'VALUES (:id_loja, :titulo, :subtitulo, :avatar, :foto_bio, :bio) ' +
+        '(ID_LOJA_EX, TITULO, SUBTITULO, AVATAR, FOTO_BIO, BIO, URL_VIDEO) ' +
+        'VALUES (:id_loja, :titulo, :subtitulo, :avatar, :foto_bio, :bio, :url_video) ' +
         'MATCHING (ID_LOJA_EX);',
-        [IDLoja, Titulo, Subtitulo, Avatar, FotoBio, Bio]
+        [IDLoja, Titulo, Subtitulo, Avatar, FotoBio, Bio, url_video]
       );
     except
       on E: Exception do
         raise Exception.Create('Falha de banco de dados ao salvar portfólio: ' + E.Message);
     end;
+end;
+
+class procedure TProtifolioModel.AtualizarUrlVideo(const id_loja, url_video: string);
+begin
+  try
+    TGetData.getData(
+      'UPDATE OR INSERT INTO SITE (ID_LOJA_EX, URL_VIDEO) ' +
+      'VALUES (:id_loja, :url_video) MATCHING (ID_LOJA_EX);',
+      [id_loja, url_video]
+    );
+  except
+    on E: Exception do
+      raise Exception.Create('Falha de banco de dados ao salvar vídeo: ' + E.Message);
+  end;
 end;
 
 class function TProtifolioModel.GetPortfolio(var id_loja: string): TJSONObject;
@@ -356,7 +373,7 @@ begin
   try
     dataset := TGetData.getData(
       'SELECT ID, TITULO, SUBTITULO, '+
-      'AVATAR, FOTO_BIO, BIO, FOTO_CAPA '+
+      'AVATAR, FOTO_BIO, BIO, FOTO_CAPA, URL_VIDEO '+
       'FROM SITE WHERE ID_LOJA_EX = :id_loja;',
       [id_loja],
       True
@@ -374,6 +391,7 @@ begin
     Result.Add('foto_bio',  dataset.FieldByName('foto_bio' ).AsString);
     Result.Add('bio',       dataset.FieldByName('bio'      ).AsString);
     Result.Add('foto_capa', dataset.FieldByName('foto_capa').AsString);
+    Result.Add('url_video', dataset.FieldByName('url_video').AsString);
     Result.add('id_site',   dataset.FieldByName('id'       ).AsInteger);
 
   finally

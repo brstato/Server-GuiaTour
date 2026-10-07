@@ -9,7 +9,8 @@ uses
   SysUtils,
   uportifoliomodel,
   //uguiatourdata,
-  httpprotocol;
+  httpprotocol,
+  fpjson;
 
 type
 
@@ -44,6 +45,7 @@ var
   EnderecoCompleto, MapsUrl, WhatsLimpo, UrlCanonica: string;
   CarrosselHtml, UrlFotoAbsoluta: string;
   SchemaAggregateRating: string;
+  VideoJson: TJSONObject;
   i, p: Integer;
 begin
   // 1. Carrega o template HTML
@@ -172,6 +174,16 @@ begin
 
   HTMLFinal := StringReplace(HTMLFinal, '{{DEPOIMENTOS_JSON}}', TProtifolioModel.GetDepoimentosAprovadosJson(Perfil.UUid), [rfReplaceAll]);
   HTMLFinal := StringReplace(HTMLFinal, '{{DEPOIMENTOS_SUBMIT_URL}}', 'https://api.guiatour.online/api/v1/depoimentos', [rfReplaceAll]);
+
+  // Vídeo: JSON {"url_video":"..."} dentro de <script type="application/json">.
+  // O fpjson escapa aspas; o "<" vira < para nunca fechar o </script>.
+  VideoJson := TJSONObject.Create(['url_video', Perfil.UrlVideo]);
+  try
+    HTMLFinal := StringReplace(HTMLFinal, '{{VIDEO_JSON}}',
+      StringReplace(VideoJson.AsJSON, '<', '<', [rfReplaceAll]), [rfReplaceAll]);
+  finally
+    VideoJson.Free;
+  end;
 
   // Limpeza final de placeholders não substituídos
   while (Pos('{{', HTMLFinal) > 0) and (Pos('}}', HTMLFinal) > Pos('{{', HTMLFinal)) do

@@ -104,7 +104,7 @@ h1,.ttl{margin:.4em 0 .25em;max-width:16ch;font-size:clamp(2.4rem,8.5vw,4.8rem);
 /* História */
 .story{padding:56px 0 8px}
 .story .wrap{display:grid;gap:24px}
-.story h2,.gal h2,.more-sec h2,.near h2{margin-bottom:.5em;font-size:clamp(1.5rem,4.5vw,2.1rem);font-weight:800;line-height:1.15;letter-spacing:-.025em}
+.story h2,.vid h2,.gal h2,.more-sec h2,.near h2{margin-bottom:.5em;font-size:clamp(1.5rem,4.5vw,2.1rem);font-weight:800;line-height:1.15;letter-spacing:-.025em}
 .lead{color:var(--ink);font-size:1.25rem;font-weight:500;line-height:1.5}
 .lead:empty{display:none}
 .hist{max-width:62ch;color:var(--ink2);font-size:1.05rem;line-height:1.75}
@@ -135,6 +135,25 @@ dialog[open],dialog[open]::backdrop{animation:lbfade .25s ease-out}
 .lb button:hover{background:rgba(255,255,255,.3)}
 #lbx{top:14px;right:14px}#lbp{left:12px;top:50%}#lbf{right:12px;top:50%}
 #lbn{position:absolute;bottom:16px;font-size:.95rem}
+
+/* Vídeo: capa leve (só a imagem); o player do YouTube só carrega no toque.
+   A caixa já reserva o espaço 16:9, então nada na página pula quando o vídeo entra. */
+.vid{padding:40px 0 8px}
+.vbox{position:relative;max-width:880px;aspect-ratio:16/9;border:1px solid var(--linha);border-radius:20px;overflow:hidden;background:#0f172a;box-shadow:0 8px 30px rgba(15,23,42,.10)}
+.vbox iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.vplay{position:absolute;inset:0;z-index:1;display:block;width:100%;height:100%;padding:0;border:0;background:linear-gradient(135deg,var(--azul),var(--ink));color:#fff;font:inherit;cursor:pointer}
+.vplay img{width:100%;height:100%;object-fit:cover;transition:transform .5s cubic-bezier(.2,.7,.2,1)}
+.vplay::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(15,23,42,.72),rgba(15,23,42,.08) 55%,rgba(15,23,42,.18))}
+.vplay:hover img{transform:scale(1.03)}
+.vbtn{position:absolute;z-index:1;left:50%;top:50%;display:grid;place-items:center;width:76px;height:76px;margin:-38px 0 0 -38px;border-radius:50%;background:rgba(255,255,255,.94);color:var(--azul);box-shadow:0 0 0 8px rgba(255,255,255,.18),0 10px 28px rgba(15,23,42,.35);transition:transform .2s,background .2s}
+.vbtn svg{margin-left:5px;fill:currentColor}
+.vplay:hover .vbtn{transform:scale(1.07);background:#fff}
+.vplay:focus-visible{outline:3px solid #fff;outline-offset:-6px}
+.vcap{position:absolute;z-index:1;left:18px;right:18px;bottom:16px;display:flex;align-items:center;gap:8px;font-size:.98rem;font-weight:600;text-align:left;text-shadow:0 1px 2px rgba(15,23,42,.5)}
+.vcap small{margin-left:auto;padding:.15em .7em;border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(15,23,42,.35);font-size:.78rem;font-weight:500;text-shadow:none}
+.vplay.load .vbtn{animation:vpulse 1s ease-in-out infinite}
+@keyframes vpulse{50%{transform:scale(.9);opacity:.75}}
+.vmsg{position:absolute;inset:0;display:grid;place-items:center;padding:24px;color:rgba(255,255,255,.85);text-align:center}
 
 /* Vitrine: perto daqui */
 .near{margin-top:48px;padding:56px 0;border-top:1px solid var(--azul-borda);background:linear-gradient(180deg,var(--azul-suave),rgba(248,250,252,0))}
@@ -298,6 +317,8 @@ footer{padding:28px 0 40px;border-top:1px solid var(--linha);color:var(--mudo);f
       </div>
     </div>
   </section>
+
+  <!-- Vídeo (#vid): criado pelo script logo abaixo da história, só quando url_video traz um link válido do YouTube -->
 
   <section class="gal" id="gal" aria-labelledby="hFotos" {{GAL_HIDDEN}}>
     <div class="wrap">
@@ -554,6 +575,96 @@ function initGal(){
   g.addEventListener('focusout',function(){gFocus=false;gSync()});
 })();
 document.addEventListener('visibilitychange',function(){gSync()});
+
+/* Vídeo do YouTube
+   - Até o toque, é só uma imagem (nada do YouTube carrega): página leve e sem salto de layout.
+   - Toca dentro da própria página (playsinline), pelo domínio youtube-nocookie.
+   - Ao terminar, o player é destruído e a capa volta com "Assistir de novo":
+     a tela final de sugestões do YouTube nunca chega a aparecer.
+   - O ID sai da URL por uma regex estrita (11 caracteres A-Z a-z 0-9 _ -); a URL cadastrada nunca entra crua no HTML. */
+var YTP=null,ytApi=null,vidId='',vidTok=0;
+function ytId(u){
+  if(typeof u!=='string')return '';
+  var m=u.trim().match(/^https:\/\/(?:(?:www\.|m\.)?youtube\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})(?:[?&#\/]|$)/);
+  return m?m[1]:'';
+}
+function ytLoad(){   // API oficial do player, carregada uma vez e só quando precisa
+  if(window.YT&&YT.Player&&YT.loaded)return Promise.resolve();
+  if(ytApi)return ytApi;
+  ytApi=new Promise(function(ok,no){
+    var prev=window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady=function(){if(typeof prev==='function')try{prev()}catch(e){}ok()};
+    var s=el('script');s.async=true;s.src='https://www.youtube.com/iframe_api';
+    s.onerror=function(){no(new Error('script'))};document.head.append(s);
+    setTimeout(function(){no(new Error('tempo'))},12000);
+  }).catch(function(e){ytApi=null;throw e});
+  return ytApi;
+}
+function vidStop(){if(YTP){var p=YTP;YTP=null;try{p.destroy()}catch(e){}}}
+function vidMsg(t){vidStop();var bx=$('#vbox');if(bx)bx.replaceChildren(el('p','vmsg',t))}
+// Monta a seção só quando há vídeo; sem vídeo ela não existe no DOM.
+function vidSection(){
+  var s=$('#vid');if(s)return s;
+  s=el('section','vid');s.id='vid';s.setAttribute('aria-labelledby','hVideo');
+  var w=el('div','wrap'),h=el('h2','','Veja em vídeo'),bx=el('div','vbox');h.id='hVideo';bx.id='vbox';
+  w.append(h,bx);s.append(w);
+  var st=$('.story');if(st)st.after(s);else $('#historia').prepend(s);
+  return s;
+}
+function vidFacade(again){
+  var box=$('#vbox');vidStop();box.replaceChildren();
+  var hq='https://i.ytimg.com/vi/'+vidId+'/hqdefault.jpg';
+  var b=el('button','vplay');b.type='button';
+  b.setAttribute('aria-label',(again?'Assistir de novo ao vídeo':'Assistir ao vídeo')+(nome?' de '+nome:''));
+  var im=new Image();im.alt='';im.decoding='async';im.loading='lazy';
+  // maxres nem sempre existe (o YouTube devolve um cinza de 120px): cai para hqdefault, que sempre existe
+  im.onload=function(){if(im.naturalWidth<=120&&im.src!==hq)im.src=hq};
+  im.onerror=function(){if(im.src!==hq)im.src=hq;else im.remove()};
+  im.src='https://i.ytimg.com/vi/'+vidId+'/maxresdefault.jpg';
+  var pb=el('span','vbtn');pb.innerHTML='<svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86A1 1 0 0 0 8 5.14z"/></svg>';
+  var cap=el('span','vcap',again?'Assistir de novo':'Assistir ao vídeo');cap.append(el('small','','YouTube'));
+  b.append(im,pb,cap);
+  var warm=function(){ytLoad().catch(function(){})};   // passou o mouse/dedo ou focou: já vai baixando o player
+  b.addEventListener('pointerenter',warm,{once:true});b.addEventListener('focus',warm,{once:true});
+  b.onclick=function(){vidPlay(b)};
+  box.append(b);
+  return b;
+}
+function vidPlay(b){
+  if(b.classList.contains('load'))return;
+  var tok=vidTok,id=vidId,ttl='Vídeo: '+(nome||'ponto turístico');
+  b.classList.add('load');say('Carregando o vídeo…');
+  ytLoad().then(function(){
+    if(tok!==vidTok)return;   // trocou de ponto no meio do carregamento
+    var slot=el('div');$('#vbox').append(slot);
+    YTP=new YT.Player(slot,{host:'https://www.youtube-nocookie.com',videoId:id,width:'100%',height:'100%',
+      playerVars:{autoplay:1,playsinline:1,rel:0,iv_load_policy:3,hl:'pt-BR',cc_lang_pref:'pt',origin:location.origin},
+      events:{
+        onReady:function(e){if(tok!==vidTok)return;var f=e.target.getIframe();f.title=ttl;b.remove();
+          try{e.target.playVideo()}catch(x){}try{f.focus({preventScroll:true})}catch(x){}},
+        onStateChange:function(e){
+          if(tok!==vidTok||e.data!==0)return;   // 0 = terminou
+          var nb=vidFacade(true);say('O vídeo terminou.');nb.focus({preventScroll:true})},
+        onError:function(){if(tok===vidTok)setTimeout(function(){vidMsg('Este vídeo não está disponível no momento.')},0)}
+      }});
+  }).catch(function(){
+    // API do YouTube bloqueada (extensão, rede): player simples, ainda dentro da página
+    if(tok!==vidTok)return;
+    var f=el('iframe');f.title=ttl;f.allowFullscreen=true;f.referrerPolicy='strict-origin-when-cross-origin';
+    f.setAttribute('allow','autoplay; encrypted-media; picture-in-picture; fullscreen');
+    f.src='https://www.youtube-nocookie.com/embed/'+id+'?autoplay=1&playsinline=1&rel=0&iv_load_policy=3&hl=pt-BR';
+    $('#vbox').replaceChildren(f);
+  });
+}
+// null, "", campo ausente ou link que não é do YouTube: ytId devolve '' e a seção não é construída
+// (se veio de um ponto anterior pelo "+ info", é removida).
+function initVideo(){
+  vidTok++;vidStop();
+  vidId=ytId(P.url_video);
+  var s=$('#vid');
+  if(!vidId){if(s)s.remove();return}
+  vidSection();vidFacade(false);
+}
 
 /* Comércios: cards e pins sincronizados */
 function walk(s){var f=user||{lat:lat,lng:lng};
@@ -828,7 +939,7 @@ document.addEventListener('click',function(e){
 });
 addEventListener('popstate',function(){if(swapped)openSpot(location.pathname+location.search,false)});
 
-function initPage(){initHist();initGal();initHero();decorateCats()}
+function initPage(){initHist();initVideo();initGal();initHero();decorateCats()}
 initPage();
 
 /* Carrega cada bloco quando ele se aproxima da tela */

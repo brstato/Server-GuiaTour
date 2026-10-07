@@ -396,6 +396,159 @@
             display: block;
         }
 
+        /* Vídeo: capa leve (só a imagem); o player do YouTube só carrega no toque.
+           A caixa já reserva o espaço 16:9, então nada na página pula quando o vídeo entra. */
+        .video-box {
+            position: relative;
+            aspect-ratio: 16 / 9;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            background: #111827;
+            box-shadow: var(--card-shadow);
+        }
+
+        .video-box iframe {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        .video-play {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            display: block;
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            border: 0;
+            background: linear-gradient(135deg, var(--accent-color), #111827);
+            color: #ffffff;
+            cursor: pointer;
+        }
+
+        .video-play img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.5s ease;
+        }
+
+        .video-play::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.05) 55%, rgba(0, 0, 0, 0.15) 100%);
+        }
+
+        .video-play:hover img {
+            transform: scale(1.03);
+        }
+
+        .video-play:focus-visible {
+            outline: 3px solid #ffffff;
+            outline-offset: -6px;
+        }
+
+        .video-play-btn {
+            position: absolute;
+            z-index: 1;
+            left: 50%;
+            top: 50%;
+            display: grid;
+            place-items: center;
+            width: 68px;
+            height: 68px;
+            margin: -34px 0 0 -34px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.94);
+            color: var(--accent-color);
+            box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.18), 0 10px 28px rgba(0, 0, 0, 0.35);
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        .video-play-btn svg {
+            margin-left: 4px;
+            fill: currentColor;
+        }
+
+        .video-play:hover .video-play-btn {
+            transform: scale(1.07);
+            background: #ffffff;
+        }
+
+        .video-play.loading .video-play-btn {
+            animation: video-pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes video-pulse {
+            50% {
+                transform: scale(0.9);
+                opacity: 0.75;
+            }
+        }
+
+        .video-caption {
+            position: absolute;
+            z-index: 1;
+            left: 16px;
+            right: 16px;
+            bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-align: left;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .video-caption small {
+            margin-left: auto;
+            padding: 1px 10px;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.35);
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-shadow: none;
+        }
+
+        .video-msg {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            color: rgba(255, 255, 255, 0.85);
+            text-align: center;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            .video-play img,
+            .video-play-btn {
+                transition: none;
+            }
+
+            .video-play.loading .video-play-btn {
+                animation: none;
+            }
+        }
+
         /* Depoimentos */
         .testimonial-card {
             flex: 0 0 280px;
@@ -699,6 +852,8 @@
             </div>
         </section>
 
+        <!-- VÍDEO (#video): criado pelo script logo abaixo de "Sobre Nós", só quando url_video traz um link válido do YouTube -->
+
         <!-- GALERIA -->
         <section id="gallery">
             <h2 class="section-title">Nossas Fotos</h2>
@@ -825,6 +980,174 @@
 
     <!-- Dados dos depoimentos: type="application/json" para o navegador NUNCA tentar interpretar isso como JS -->
     <script type="application/json" id="depoimentos-data">{{DEPOIMENTOS_JSON}}</script>
+
+    <!-- Vídeo do comerciante: o backend troca por {"url_video":"..."}. Vazio, null ou JSON inválido: a seção não é criada -->
+    <script type="application/json" id="video-data">{{VIDEO_JSON}}</script>
+
+    <script>
+        /* Vídeo do YouTube
+           - Até o toque, é só uma imagem (nada do YouTube carrega): página leve e sem salto de layout.
+           - Toca dentro da própria página (playsinline), pelo domínio youtube-nocookie.
+           - Ao terminar, o player é destruído e a capa volta com "Assistir de novo":
+             a tela final de sugestões do YouTube nunca chega a aparecer.
+           - O ID sai da URL por uma regex estrita (11 caracteres A-Z a-z 0-9 _ -); a URL cadastrada nunca entra crua no HTML. */
+        (function () {
+            let urlVideo = '';
+            try {
+                const raw = (document.getElementById('video-data').textContent || '').trim();
+                if (raw !== '') {
+                    const dados = JSON.parse(raw);
+                    if (dados && typeof dados.url_video === 'string') urlVideo = dados.url_video;
+                }
+            } catch (err) {
+                urlVideo = '';
+            }
+
+            function ytId(u) {
+                if (typeof u !== 'string') return '';
+                const m = u.trim().match(/^https:\/\/(?:(?:www\.|m\.)?youtube\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})(?:[?&#\/]|$)/);
+                return m ? m[1] : '';
+            }
+
+            const vidId = ytId(urlVideo);
+            if (!vidId) return;   // null, "", campo ausente ou link que não é do YouTube: a seção nem é construída
+
+            const tituloEl = document.querySelector('.cover-info-value');
+            const nome = tituloEl ? tituloEl.textContent.trim() : '';
+            let player = null;
+            let ytApi = null;
+
+            // Monta a seção logo abaixo de "Sobre Nós"
+            const section = document.createElement('section');
+            section.id = 'video';
+            section.setAttribute('aria-labelledby', 'video-title');
+            const h2 = document.createElement('h2');
+            h2.className = 'section-title';
+            h2.id = 'video-title';
+            h2.textContent = 'Veja em Vídeo';
+            const box = document.createElement('div');
+            box.className = 'video-box';
+            const live = document.createElement('p');
+            live.className = 'sr-only';
+            live.setAttribute('aria-live', 'polite');
+            section.append(h2, box, live);
+            const about = document.getElementById('about');
+            if (about) about.after(section);
+            else document.querySelector('.container').append(section);
+
+            function say(t) { live.textContent = t; }
+
+            function ytLoad() {   // API oficial do player, carregada uma vez e só quando precisa
+                if (window.YT && YT.Player && YT.loaded) return Promise.resolve();
+                if (ytApi) return ytApi;
+                ytApi = new Promise((resolve, reject) => {
+                    const prev = window.onYouTubeIframeAPIReady;
+                    window.onYouTubeIframeAPIReady = () => {
+                        if (typeof prev === 'function') { try { prev(); } catch (e) { } }
+                        resolve();
+                    };
+                    const s = document.createElement('script');
+                    s.async = true;
+                    s.src = 'https://www.youtube.com/iframe_api';
+                    s.onerror = () => reject(new Error('script'));
+                    document.head.appendChild(s);
+                    setTimeout(() => reject(new Error('tempo')), 12000);
+                }).catch((e) => { ytApi = null; throw e; });
+                return ytApi;
+            }
+
+            function stop() {
+                if (player) { const p = player; player = null; try { p.destroy(); } catch (e) { } }
+            }
+
+            function facade(again) {
+                stop();
+                box.replaceChildren();
+                const hq = 'https://i.ytimg.com/vi/' + vidId + '/hqdefault.jpg';
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'video-play';
+                b.setAttribute('aria-label', (again ? 'Assistir de novo ao vídeo' : 'Assistir ao vídeo') + (nome ? ' de ' + nome : ''));
+                const img = new Image();
+                img.alt = '';
+                img.decoding = 'async';
+                img.loading = 'lazy';
+                // maxres nem sempre existe (o YouTube devolve um cinza de 120px): cai para hqdefault, que sempre existe
+                img.onload = () => { if (img.naturalWidth <= 120 && img.src !== hq) img.src = hq; };
+                img.onerror = () => { if (img.src !== hq) img.src = hq; else img.remove(); };
+                img.src = 'https://i.ytimg.com/vi/' + vidId + '/maxresdefault.jpg';
+                const btn = document.createElement('span');
+                btn.className = 'video-play-btn';
+                btn.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86A1 1 0 0 0 8 5.14z"/></svg>';
+                const cap = document.createElement('span');
+                cap.className = 'video-caption';
+                cap.textContent = again ? 'Assistir de novo' : 'Assistir ao vídeo';
+                const tag = document.createElement('small');
+                tag.textContent = 'YouTube';
+                cap.appendChild(tag);
+                b.append(img, btn, cap);
+                const warm = () => { ytLoad().catch(() => { }); };   // passou o mouse/dedo ou focou: já vai baixando o player
+                b.addEventListener('pointerenter', warm, { once: true });
+                b.addEventListener('focus', warm, { once: true });
+                b.addEventListener('click', () => play(b));
+                box.appendChild(b);
+                return b;
+            }
+
+            function play(b) {
+                if (b.classList.contains('loading')) return;
+                const ttl = 'Vídeo: ' + (nome || 'comércio');
+                b.classList.add('loading');
+                say('Carregando o vídeo…');
+                ytLoad().then(() => {
+                    const slot = document.createElement('div');
+                    box.appendChild(slot);
+                    player = new YT.Player(slot, {
+                        host: 'https://www.youtube-nocookie.com',
+                        videoId: vidId,
+                        width: '100%',
+                        height: '100%',
+                        playerVars: { autoplay: 1, playsinline: 1, rel: 0, iv_load_policy: 3, hl: 'pt-BR', cc_lang_pref: 'pt', origin: location.origin },
+                        events: {
+                            onReady: (e) => {
+                                const f = e.target.getIframe();
+                                f.title = ttl;
+                                b.remove();
+                                try { e.target.playVideo(); } catch (x) { }
+                                try { f.focus({ preventScroll: true }); } catch (x) { }
+                            },
+                            onStateChange: (e) => {
+                                if (e.data !== 0) return;   // 0 = terminou
+                                const nb = facade(true);
+                                say('O vídeo terminou.');
+                                nb.focus({ preventScroll: true });
+                            },
+                            onError: () => {
+                                setTimeout(() => {
+                                    stop();
+                                    const m = document.createElement('p');
+                                    m.className = 'video-msg';
+                                    m.textContent = 'Este vídeo não está disponível no momento.';
+                                    box.replaceChildren(m);
+                                }, 0);
+                            }
+                        }
+                    });
+                }).catch(() => {
+                    // API do YouTube bloqueada (extensão, rede): player simples, ainda dentro da página
+                    const f = document.createElement('iframe');
+                    f.title = ttl;
+                    f.allowFullscreen = true;
+                    f.referrerPolicy = 'strict-origin-when-cross-origin';
+                    f.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture; fullscreen');
+                    f.src = 'https://www.youtube-nocookie.com/embed/' + vidId + '?autoplay=1&playsinline=1&rel=0&iv_load_policy=3&hl=pt-BR';
+                    box.replaceChildren(f);
+                });
+            }
+
+            facade(false);
+        })();
+    </script>
 
     <script>
         (function () {

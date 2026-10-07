@@ -162,6 +162,7 @@ begin
         avatar    := RequestJson.Get('avatar',    '');
         foto_capa := RequestJson.Get('foto_capa', '');
         trabalhos := RequestJson.Get('trabalhos', '');
+        url_video := Trim(RequestJson.Get('url_video', ''));
 
         vendorList.id_categoria := RequestJson.Get('id_categoria', 0);
       end;
@@ -175,6 +176,12 @@ begin
       if (vendorList.nome = '') or (vendorList.email = '') then
       begin
         TJsonView.SendError(Res, 400, 'Nome e e-mail são obrigatórios.');
+        Exit;
+      end;
+
+      if not UrlVideoValida(vendorList.url_video) then
+      begin
+        TJsonView.SendError(Res, 400, 'URL de vídeo inválida. Use um link https do YouTube ou Vimeo.');
         Exit;
       end;
 
