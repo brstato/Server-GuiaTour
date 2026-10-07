@@ -54,7 +54,7 @@ end;
 
 procedure PreencherDadosDoBody(RequestJson: TJSONObject; out dados: TPontoTuristicoData);
 var
-  g: TJSONData;
+  g, f: TJSONData;
 begin
   with dados do
   begin
@@ -82,6 +82,10 @@ begin
       galeria := g.AsString
     else
       galeria := '';
+
+    url_video := Trim(RequestJson.Get('url_video', ''));
+    f := RequestJson.Find('url_video');
+    url_video_enviado := Assigned(f) and (f.JSONType in [jtString, jtNull]);
 
     id_categoria := RequestJson.Get('id_categoria', 0);
   end;
@@ -134,6 +138,12 @@ begin
               TPontoTuristicoModel.TryParseCoord(dados.longitude, -180, 180, lngV)) then
       begin
         TJsonView.SendError(Res, 400, 'Latitude/longitude inválidas.');
+        Exit;
+      end;
+
+      if not UrlVideoValida(dados.url_video) then
+      begin
+        TJsonView.SendError(Res, 400, 'URL de vídeo inválida. Use um link https do YouTube ou Vimeo.');
         Exit;
       end;
 
@@ -256,6 +266,12 @@ begin
               TPontoTuristicoModel.TryParseCoord(dados.longitude, -180, 180, lngV)) then
       begin
         TJsonView.SendError(Res, 400, 'Latitude/longitude inválidas.');
+        Exit;
+      end;
+
+      if not UrlVideoValida(dados.url_video) then
+      begin
+        TJsonView.SendError(Res, 400, 'URL de vídeo inválida. Use um link https do YouTube ou Vimeo.');
         Exit;
       end;
 

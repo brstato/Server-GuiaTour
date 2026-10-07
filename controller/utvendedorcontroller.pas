@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Horse, uloginmodel, uvendedormodel, uJsonView, fpjson,
-  udata, uconfig, usecurityservice, Horse.JWT, uautorizacao;
+  udata, uconfig, usecurityservice, Horse.JWT, uautorizacao, uguiatourutils;
 
 type
 

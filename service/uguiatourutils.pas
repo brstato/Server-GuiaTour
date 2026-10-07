@@ -32,6 +32,11 @@ function HtmlEsc(const S: string): string;
 // JSON para dentro de <script type="application/json|ld+json">: troca "<" por \u003c.
 function JsonParaScript(const Json: string): string;
 
+// URL de vídeo: vazio = válido (limpa o campo). Senão, só https:// com host
+// do YouTube/Vimeo, até 1000 caracteres (tamanho da coluna URL_VIDEO), sem
+// espaços, aspas, < > \ ` { } nem caracteres fora do ASCII.
+function UrlVideoValida(const S: string): Boolean;
+
 implementation
 
 function SlugValido(const S: string): Boolean;
@@ -124,6 +129,44 @@ end;
 function JsonParaScript(const Json: string): string;
 begin
   Result := StringReplace(Json, '<', '\u003c', [rfReplaceAll]);
+end;
+
+function UrlVideoValida(const S: string): Boolean;
+const
+  HOSTS_VIDEO: array[0..6] of string = (
+    'youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be',
+    'vimeo.com', 'www.vimeo.com', 'player.vimeo.com'
+  );
+var
+  i, fim: Integer;
+  resto, host: string;
+begin
+  Result := False;
+  if S = '' then Exit(True);
+  if Length(S) > 1000 then Exit;
+
+  // { e } também ficam de fora: o motor de template usa {{VAR}}
+  for i := 1 to Length(S) do
+    if (Ord(S[i]) <= 32) or (Ord(S[i]) > 126) or
+       (S[i] in ['"', '''', '<', '>', '\', '`', '{', '}']) then Exit;
+
+  if LowerCase(Copy(S, 1, 8)) <> 'https://' then Exit;
+
+  resto := Copy(S, 9, MaxInt);
+  fim := Length(resto) + 1;
+  for i := 1 to Length(resto) do
+    if resto[i] in ['/', '?', '#'] then
+    begin
+      fim := i;
+      Break;
+    end;
+
+  host := LowerCase(Copy(resto, 1, fim - 1));
+  // sem usuário@host e sem porta
+  if (host = '') or (Pos('@', host) > 0) or (Pos(':', host) > 0) then Exit;
+
+  for i := Low(HOSTS_VIDEO) to High(HOSTS_VIDEO) do
+    if host = HOSTS_VIDEO[i] then Exit(True);
 end;
 
 end.

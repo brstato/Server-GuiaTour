@@ -33,7 +33,8 @@ Type
     nome_arquivo_foto_avatar,
     foto_capa,
     nome_arquivo_foto_capa,
-    trabalhos: string;
+    trabalhos,
+    url_video: string;
     id_categoria: integer;
     latitude,
     longitude: string
@@ -208,8 +209,8 @@ begin
       end;
 
       dataset := TGetData.getData(
-          'insert into site(titulo, subtitulo, avatar, foto_bio, bio, foto_capa, id_loja_ex) ' +
-          'values(:titulo, :subtitulo, :avatar, :foto_bio, :bio, :foto_capa, :id_loja_ex) ' +
+          'insert into site(titulo, subtitulo, avatar, foto_bio, bio, foto_capa, id_loja_ex, url_video) ' +
+          'values(:titulo, :subtitulo, :avatar, :foto_bio, :bio, :foto_capa, :id_loja_ex, :url_video) ' +
           'returning id;',
           [
               vendor.titulo,
@@ -218,7 +219,8 @@ begin
               url_banco_fotobio,
               vendor.bio,
               url_banco_fotocapa,
-              idLoja
+              idLoja,
+              vendor.url_video
           ],
           True
       );

@@ -35,8 +35,10 @@ type
     estado,
     nome_arquivo_capa,
     capa,
-    galeria: string;
+    galeria,
+    url_video: string;
     id_categoria: integer;
+    url_video_enviado: Boolean; // True se 'url_video' veio no body (atualização)
   end;
 
   // Imagem já validada e decodificada, pronta para gravar em disco.
@@ -447,10 +449,10 @@ begin
       dataSet := TGetData.getData(
         'insert into ponto_turistico(uuid, id_vendedor, id_categoria, nome, slug, ' +
         'resumo, historia, latitude, longitude, endereco, numero, bairro, cidade, ' +
-        'uf, cep, capa, ativo) ' +
+        'uf, cep, capa, url_video, ativo) ' +
         'values(:uuid, (select id from vendedor where uuid = :idVendedor), :idCategoria, ' +
         ':nome, :slug, :resumo, :historia, :latitude, :longitude, :endereco, :numero, ' +
-        ':bairro, :cidade, :uf, :cep, :capa, TRUE) ' +
+        ':bairro, :cidade, :uf, :cep, :capa, :url_video, TRUE) ' +
         'returning id;',
         [
           uuidString,
@@ -468,7 +470,8 @@ begin
           dados.cidade,
           dados.estado,
           dados.cep,
-          url_banco_capa
+          url_banco_capa,
+          dados.url_video
         ],
         True
       );
@@ -605,6 +608,13 @@ begin
         idPonto
       ]
     );
+
+    // vídeo é opcional na edição — só troca se 'url_video' veio no request
+    if dados.url_video_enviado then
+      TGetData.getData(
+        'update ponto_turistico set url_video = :url_video where id = :id;',
+        [dados.url_video, idPonto]
+      );
 
     // capa nova é opcional — só troca se vier arquivo no request
     if temCapa then
