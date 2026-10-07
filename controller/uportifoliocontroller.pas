@@ -214,8 +214,7 @@ begin
         subtitulo,
         avatar,
         foto_bio,
-        bio,
-        url_video
+        bio
       );
 
       if url_video_enviado then
@@ -229,7 +228,7 @@ begin
     except
       on e:exception do
       begin
-        TJsonView.SendError(res, 500, e.Message);
+        TJsonView.SendErroInterno(res, 'uportifoliocontroller', e);
         if Assigned(jsonres) then jsonres.Free;
       end;
     end;
@@ -261,7 +260,7 @@ begin
   except
     on e:exception do
     begin
-      TJsonView.SendError(res, 500, e.Message);
+      TJsonView.SendErroInterno(res, 'uportifoliocontroller', e);
       if Assigned(jsonres) then jsonres.Free;
     end;
   end;
@@ -273,18 +272,26 @@ var
   id: integer;
   str_id: string;
   jsonreq: TJSONObject;
+  lJSONData, f: TJSONData;
 begin
   jsonreq := nil;
   try
     try
-      jsonreq := TJSONObject(GetJSON(req.Body));
-      if not Assigned(jsonreq) then
+      lJSONData := GetJSON(req.Body);
+      if lJSONData.JSONType <> jtObject then
       begin
+        lJSONData.Free;
         TJsonView.SendError(res, 400, 'Json mal formado.');
         exit;
       end;
+      jsonreq := TJSONObject(lJSONData);
 
-      id := StrToIntDef(jsonreq.find('id_foto').AsString, 0);
+      // o painel manda id_foto como número; aceita texto também
+      f := jsonreq.Find('id_foto');
+      if Assigned(f) and (f.JSONType in [jtNumber, jtString]) then
+        id := StrToIntDef(f.AsString, 0)
+      else
+        id := 0;
       if id = 0 then
       begin
         TJsonView.SendError(res, 400, 'Id da foto não informado.');
@@ -297,7 +304,7 @@ begin
 
       TJsonView.SendSuccess(res);
     except on e:exception do
-      TJsonView.SendError(res, 500, e.Message);
+      TJsonView.SendErroInterno(res, 'uportifoliocontroller', e);
     end;
   finally
     FreeAndNil(jsonreq);
@@ -348,7 +355,7 @@ begin
       TJsonView.SendSuccess(res);
     except
       on e: exception do
-        TJsonView.SendError(res, 500, e.Message);
+        TJsonView.SendErroInterno(res, 'uportifoliocontroller', e);
     end;
   finally
     if Assigned(jsonreq) then jsonreq.Free;
@@ -372,7 +379,7 @@ begin
       TJsonView.SendError(res, 400, 'id inválido');
     on e:exception do
     begin
-      TJsonView.SendError(res, 500, e.Message);
+      TJsonView.SendErroInterno(res, 'uportifoliocontroller', e);
       if Assigned(jsonres) then jsonres.Free;
     end;
   end;
@@ -421,7 +428,7 @@ begin
       TJsonView.SendResponseJsonObject(res, jsonres, 200);
     except on e:exception do
     begin
-      TJsonView.SendError(res, 500, e.Message);
+      TJsonView.SendErroInterno(res, 'uportifoliocontroller', e);
       if Assigned(jsonres) then jsonres.Free;
     end;
     end;
@@ -471,7 +478,7 @@ begin
       TJsonView.SendResponseJsonObject(res, jsonres, 200);
     except on e:exception do
     begin
-      TJsonView.SendError(res, 500, e.Message);
+      TJsonView.SendErroInterno(res, 'uportifoliocontroller', e);
       if Assigned(jsonres) then jsonres.Free;
     end;
     end;
@@ -485,24 +492,35 @@ procedure HandlePortifolioUpdateBasico(req: THorseRequest; res: THorseResponse;
 var
   id_loja, titulo, subtitulo, bio, url_video: string;
   json_req: TJSONObject;
-  f: TJSONData;
+  f, lJSONData: TJSONData;
   url_video_enviado: Boolean;
 begin
   json_req := nil;
   try
     try
-      json_req := TJSONObject(GetJSON(req.Body));
-      if not Assigned(json_req) then
+      lJSONData := GetJSON(req.Body);
+      if lJSONData.JSONType <> jtObject then
       begin
+        lJSONData.Free;
         TJsonView.SendError(res, 400, 'Json mal formado.');
         exit;
       end;
+      json_req := TJSONObject(lJSONData);
 
       if not TAutorizacao.ResolverLojaDono(req, res, json_req, id_loja) then Exit;
 
-      titulo   := TSecurityService.SanitizeInput(json_req.find('titulo'   ).AsString);
-      subtitulo:= TSecurityService.SanitizeInput(json_req.find('subtitulo').AsString);
-      bio      := TSecurityService.SanitizeInput(json_req.find('bio'      ).AsString);
+      // os três campos são obrigatórios: se faltar um, recusa (não grava vazio por cima)
+      if not (Assigned(json_req.Find('titulo')) and
+              Assigned(json_req.Find('subtitulo')) and
+              Assigned(json_req.Find('bio'))) then
+      begin
+        TJsonView.SendError(res, 400, 'Informe titulo, subtitulo e bio.');
+        exit;
+      end;
+
+      titulo   := TSecurityService.SanitizeInput(json_req.Get('titulo',    ''));
+      subtitulo:= TSecurityService.SanitizeInput(json_req.Get('subtitulo', ''));
+      bio      := TSecurityService.SanitizeInput(json_req.Get('bio',       ''));
 
       url_video := Trim(json_req.Get('url_video', ''));
       f := json_req.Find('url_video');
@@ -645,7 +663,7 @@ begin
     except
       on e: exception do
       begin
-        TJsonView.SendError(res, 500, e.Message);
+        TJsonView.SendErroInterno(res, 'uportifoliocontroller', e);
         err := e.Message;
         if Assigned(jsonres) then jsonres.Free;
       end;
@@ -676,7 +694,7 @@ begin
       on e: exception do
       begin
         WriteLn('Erro em: HandleGetDepoimentosPendentes ' + e.Message);
-        TJsonView.SendError(res, 500, e.Message);
+        TJsonView.SendErroInterno(res, 'uportifoliocontroller', e);
       end;
     end;
   finally
@@ -716,7 +734,7 @@ begin
       TJsonView.SendSuccess(res);
     except
       on e: exception do
-        TJsonView.SendError(res, 500, e.Message);
+        TJsonView.SendErroInterno(res, 'uportifoliocontroller', e);
     end;
   finally
     if Assigned(jsonreq) then jsonreq.Free;

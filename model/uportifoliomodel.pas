@@ -6,9 +6,11 @@ interface
 
 uses
   Classes, SysUtils, udata, ugetdata, db, jsonparser, fpjson, DateUtils,
-  base64, uarquivoseguro;
+  base64, uarquivoseguro, upontoturisticomodel;
 
 type
+  EImagemInvalida = class(Exception);
+
   TComercioPerfil = record
     Encontrado  : Boolean;
     SiteID      : Integer;
@@ -57,7 +59,7 @@ type
     class function UpdateFotoCapa(const nome_arquivo, id_loja, base64_str: string): integer;
     class function GetBySlug(const Slug: string): TComercioPerfil;
     class procedure SavePortfolio(const IDLoja, Titulo, Subtitulo, Avatar,
-      FotoBio, Bio, url_video: string);
+      FotoBio, Bio: string);
     class function GetPortfolio(var id_loja: string): TJSONObject;
     class function GetGaleria(var id_portfolio: integer): TJSONObject;
     class function UpdateAvatar(var id_site: integer; const nome_arquivo, id_loja, base64_str: string): integer;
@@ -109,7 +111,7 @@ var
   StringStream: TStringStream;
 begin
   if not TArquivoSeguro.Preparar(id_loja, base64_str, caminho_salvar, url_banco, DecodedStr) then
-    raise Exception.Create('Imagem inválida: envie JPEG, PNG ou WEBP de até 8 MB.');
+    raise EImagemInvalida.Create('Imagem inválida: envie JPEG, PNG ou WEBP de até 8 MB.');
   dataset := nil;
   StringStream := nil;
   try
@@ -331,15 +333,15 @@ begin
 end;
 
 class procedure TProtifolioModel.SavePortfolio(const IDLoja, Titulo, Subtitulo,
-  Avatar, FotoBio, Bio, url_video: string);
+  Avatar, FotoBio, Bio: string);
 begin
   try
       TGetData.getData(
         'UPDATE OR INSERT INTO SITE ' +
-        '(ID_LOJA_EX, TITULO, SUBTITULO, AVATAR, FOTO_BIO, BIO, URL_VIDEO) ' +
-        'VALUES (:id_loja, :titulo, :subtitulo, :avatar, :foto_bio, :bio, :url_video) ' +
+        '(ID_LOJA_EX, TITULO, SUBTITULO, AVATAR, FOTO_BIO, BIO) ' +
+        'VALUES (:id_loja, :titulo, :subtitulo, :avatar, :foto_bio, :bio) ' +
         'MATCHING (ID_LOJA_EX);',
-        [IDLoja, Titulo, Subtitulo, Avatar, FotoBio, Bio, url_video]
+        [IDLoja, Titulo, Subtitulo, Avatar, FotoBio, Bio]
       );
     except
       on E: Exception do
@@ -436,7 +438,7 @@ var
   StringStream: TStringStream;
 begin
   if not TArquivoSeguro.Preparar(id_loja, base64_str, caminho_salvar, url_banco, DecodedStr) then
-    raise Exception.Create('Imagem inválida: envie JPEG, PNG ou WEBP de até 8 MB.');
+    raise EImagemInvalida.Create('Imagem inválida: envie JPEG, PNG ou WEBP de até 8 MB.');
   dataset := nil;
   StringStream := nil;
   try
@@ -476,7 +478,7 @@ var
   StringStream: TStringStream;
 begin
   if not TArquivoSeguro.Preparar(id_loja, base64_str, caminho_salvar, url_banco, DecodedStr) then
-    raise Exception.Create('Imagem inválida: envie JPEG, PNG ou WEBP de até 8 MB.');
+    raise EImagemInvalida.Create('Imagem inválida: envie JPEG, PNG ou WEBP de até 8 MB.');
   dataset := nil;
   StringStream := nil;
   try
@@ -547,7 +549,7 @@ var
   StringStream: TStringStream;
 begin
   if not TArquivoSeguro.Preparar(id_loja, base64Str, caminho_salvar, url_banco, DecodedStr) then
-    raise Exception.Create('Imagem inválida: envie JPEG, PNG ou WEBP de até 8 MB.');
+    raise EImagemInvalida.Create('Imagem inválida: envie JPEG, PNG ou WEBP de até 8 MB.');
   StringStream := nil;
   try
     StringStream := TStringStream.Create(DecodedStr);

@@ -176,11 +176,12 @@ begin
   HTMLFinal := StringReplace(HTMLFinal, '{{DEPOIMENTOS_SUBMIT_URL}}', 'https://api.guiatour.online/api/v1/depoimentos', [rfReplaceAll]);
 
   // Vídeo: JSON {"url_video":"..."} dentro de <script type="application/json">.
-  // O fpjson escapa aspas; o "<" vira < para nunca fechar o </script>.
+  // O fpjson escapa aspas; o "<" vira barra invertida + u003c (#92 = barra invertida)
+  // para nunca fechar o </script>.
   VideoJson := TJSONObject.Create(['url_video', Perfil.UrlVideo]);
   try
     HTMLFinal := StringReplace(HTMLFinal, '{{VIDEO_JSON}}',
-      StringReplace(VideoJson.AsJSON, '<', '<', [rfReplaceAll]), [rfReplaceAll]);
+      StringReplace(VideoJson.AsJSON, '<', #92'u003c', [rfReplaceAll]), [rfReplaceAll]);
   finally
     VideoJson.Free;
   end;

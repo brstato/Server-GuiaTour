@@ -39,7 +39,7 @@ begin
      except on e:exception do
        begin
          WriteLn('Erro em: handlerGetDataAccount ' + e.Message);
-         TJsonView.SendError(res, 500, 'Erro interno.');
+         TJsonView.SendErrorInternal(res);
        end;
      end;
    finally
@@ -88,7 +88,7 @@ begin
 
   except on e:exception do
   begin
-      TJsonView.SendError(res, 500, e.Message);
+      TJsonView.SendErroInterno(res, 'utlojacontroller', e);
    end;
   end;
 end;
@@ -139,7 +139,7 @@ begin
       end
       else
       begin
-         TJsonView.SendError(Res, 500, 'Erro interno: ' + MsgErro);
+         TJsonView.SendErroInterno(Res, 'HandleRegisterRoute', E);
       end;
     end;
     end;
@@ -163,36 +163,53 @@ begin
      else
         TJsonView.SendResponse(res, 200);
    except on e:exception do
-     TJsonView.SendError(res, 500, e.Message);
+     TJsonView.SendErroInterno(res, 'utlojacontroller', e);
    end;
 end;
 
 procedure HandleStudio(Req: THorseRequest; Res: THorseResponse);
 var
    jsonRes, jsonreq: TJSONObject;
-
+   lJSONData, f: TJSONData;
    slug: string;
 begin
+  jsonreq := nil;
   try
     try
-       jsonreq := TJSONObject(GetJSON(req.Body));
+       lJSONData := GetJSON(req.Body);
+       if lJSONData.JSONType <> jtObject then
+       begin
+         lJSONData.Free;
+         TJsonView.SendError(res, 400, 'Json mal formado.');
+         Exit;
+       end;
+       jsonreq := TJSONObject(lJSONData);
 
-       slug := jsonreq.Find('slug').AsString;
+       f := jsonreq.Find('slug');
+       if not (Assigned(f) and (f.JSONType = jtString)) then
+       begin
+         TJsonView.SendError(res, 400, 'Informe o slug.');
+         Exit;
+       end;
+       slug := Trim(f.AsString);
+       if slug = '' then
+       begin
+         TJsonView.SendError(res, 400, 'Informe o slug.');
+         Exit;
+       end;
 
        jsonRes := TLojaModel.GetInfoStudio(slug);
 
        if Assigned(jsonRes) then
          TJsonView.SendResponseJsonObject(res, jsonRes, 200)
        else
-         TJsonView.SendError(res, 404, '{"erro": "Estúdio não encontrado"}');
+         TJsonView.SendError(res, 404, 'Estúdio não encontrado.');
     except
       on e:exception do
-      begin
-        TJsonView.SendError(res, 500, e.message);
-      end;
+        TJsonView.SendErroInterno(res, 'HandleStudio', e);
     end;
   finally
-    jsonreq.Free;
+    if Assigned(jsonreq) then jsonreq.Free;
   end;
 end;
 
@@ -213,7 +230,7 @@ begin
   except
     on e:exception do
     begin
-      TJsonView.SendError(res, 500, e.message);
+      TJsonView.SendErroInterno(res, 'HandleEndereco', e);
     end;
   end;
 end;
@@ -239,34 +256,55 @@ begin
     TJsonView.SendResponse(res, TJSONObject(GetJSON('{"message":"Cache da instância ' + instanceUUID + ' atualizado com sucesso."}')), 200);
   except
     on E: Exception do
-      TJsonView.SendError(res, 500, 'Erro ao atualizar cache: ' + E.Message);
+      TJsonView.SendErroInterno(res, 'HandleSincronizarCache', E);
   end;
 end;
 
 procedure HandlerUpdateMetaLongToken(req: THorseRequest; res: THorseResponse; next: TNextProc);
 var
   jsonreq: TJSONObject;
+  lJSONData, f: TJSONData;
   id_loja, meta_long_token: string;
   DM: TDataModule1;
 begin
+  jsonreq := nil;
+  DM := nil;
   try
     try
       DM := TDataModule1.Create(nil);
       id_loja := DM.GetIdLoja(req.Headers['Authorization']);
+      if id_loja = '' then
+      begin
+        TJsonView.SendError(res, 401, 'Não autenticado.');
+        Exit;
+      end;
 
-      jsonreq := TJSONObject(GetJSON(req.Body));
+      lJSONData := GetJSON(req.Body);
+      if lJSONData.JSONType <> jtObject then
+      begin
+        lJSONData.Free;
+        TJsonView.SendError(res, 400, 'Json mal formado.');
+        Exit;
+      end;
+      jsonreq := TJSONObject(lJSONData);
 
-      meta_long_token := jsonreq.Find('meta_long_token').AsString;
+      f := jsonreq.Find('meta_long_token');
+      if not (Assigned(f) and (f.JSONType = jtString)) then
+      begin
+        TJsonView.SendError(res, 400, 'Informe o meta_long_token.');
+        Exit;
+      end;
+      meta_long_token := Trim(f.AsString);
 
       TLojaModel.UpdateMetaLongToken(id_loja, meta_long_token);
 
       TJsonView.SendSuccess(res);
     except on e:exception do
-      TJsonView.SendError(res, 500, e.Message);
+      TJsonView.SendErroInterno(res, 'HandlerUpdateMetaLongToken', e);
     end;
   finally
-    jsonreq.Free;
-    DM.Free;
+    if Assigned(jsonreq) then jsonreq.Free;
+    if Assigned(DM) then DM.Free;
   end;
 end;
 
@@ -290,7 +328,7 @@ begin
 
       TJsonView.SendSuccess(res);
     except on e:exception do
-      TJsonView.SendError(res, 500, e.Message);
+      TJsonView.SendErroInterno(res, 'utlojacontroller', e);
     end;
   finally
     jsonreq.Free;
@@ -318,7 +356,7 @@ begin
 
       TJsonView.SendSuccess(res);
     except on e:exception do
-      TJsonView.SendError(res, 500, e.Message);
+      TJsonView.SendErroInterno(res, 'utlojacontroller', e);
     end;
   finally
     JsonReq.Free;
@@ -347,7 +385,7 @@ begin
 
       TJsonView.SendSuccess(res);
     except on e:exception do
-      TJsonView.SendError(res, 500, e.Message);
+      TJsonView.SendErroInterno(res, 'utlojacontroller', e);
     end;
   finally
     JsonReq.Free;
@@ -378,7 +416,7 @@ begin
 
       TJsonView.SendSuccess(res);
     except on e:exception do
-      TJsonView.SendError(res, 500, e.Message);
+      TJsonView.SendErroInterno(res, 'utlojacontroller', e);
     end;
   finally
     JsonReq.Free;
@@ -422,7 +460,7 @@ begin
       TJsonView.SendSuccess(res);
     except on e:exception do
       begin
-        TJsonView.SendError(res, 500, 'Erro interno');
+        TJsonView.SendErrorInternal(res);
         WriteLn('Erro em HandlerUpdateAccounBasico: ' + e.Message);
       end;
     end;
@@ -436,22 +474,35 @@ procedure HandlerUpdateAccounContato(req: THorseRequest; res: THorseResponse;
 var
   id_loja, telefone, email, instagram: string;
   json_req: TJSONObject;
+  lJSONData: TJSONData;
 begin
   json_req := nil;
   try
     try
-        json_req := TJSONObject(GetJSON(req.Body));
-        if not Assigned(json_req) then
+        lJSONData := GetJSON(req.Body);
+        if lJSONData.JSONType <> jtObject then
         begin
+          lJSONData.Free;
           TJsonView.SendError(res, 400, 'Json mal formado.');
           exit;
         end;
+        json_req := TJSONObject(lJSONData);
 
         if not TAutorizacao.ResolverLojaDono(req, res, json_req, id_loja) then Exit;
 
-        telefone := json_req.Find('telefone' ).AsString;
-        email    := json_req.Find('email'    ).AsString;
-        instagram:= json_req.Find('instagram').AsString;
+        // os três campos são obrigatórios: se faltar um, recusa (não grava vazio por cima)
+        if not (Assigned(json_req.Find('telefone')) and
+                Assigned(json_req.Find('email')) and
+                Assigned(json_req.Find('instagram'))) then
+        begin
+          TJsonView.SendError(res, 400, 'Informe telefone, email e instagram.');
+          exit;
+        end;
+
+        // sanitizados: o instagram e o telefone vão para a página pública (inclusive dentro de <script>)
+        telefone := TSecurityService.SanitizeInput(Trim(json_req.Get('telefone',  '')));
+        email    := TSecurityService.SanitizeInput(Trim(json_req.Get('email',     '')));
+        instagram:= TSecurityService.SanitizeInput(Trim(json_req.Get('instagram', '')));
 
         TLojaModel.UpdateAccounContato(id_loja, telefone, email, instagram);
 
@@ -459,7 +510,7 @@ begin
 
     except on e:exception do
       begin
-        TJsonView.SendError(res, 500, 'Erro interno.');
+        TJsonView.SendErrorInternal(res);
         WriteLn('Erro em HandlerUpdateAccounContato: ' + e.Message);
       end;
     end;
@@ -505,7 +556,7 @@ begin
       TJsonView.SendSuccess(res);
     except on e:exception do
       begin
-        TJsonView.SendError(res, 500, 'Erro interno.');
+        TJsonView.SendErrorInternal(res);
         WriteLn('Erro em HandlerUpdateEndereco: ' + e.Message);
       end;
     end;
@@ -547,7 +598,7 @@ begin
 
   except on e:exception do
     begin
-      TJsonView.SendError(res, 500, 'Erro interno.');
+      TJsonView.SendErrorInternal(res);
       WriteLn('Erro em: HandlerGetEnderecoCep - ' + e.Message);
     end;
   end;
@@ -589,7 +640,7 @@ begin
       TJsonView.SendSuccess(res);
     except on e:exception do
       begin
-        TJsonView.SendError(res, 500, 'Erro interno');
+        TJsonView.SendErrorInternal(res);
         WriteLn('Erro em: HandlerUpdateConfiguracoesAvancadas - '+e.Message);
       end;
     end;
@@ -615,7 +666,7 @@ begin
     begin
       if Assigned(jsonRes) then FreeAndNil(jsonRes);
       if Assigned(arrayItens) then FreeAndNil(arrayItens);
-      TJsonView.SendError(res, 500, 'Erro interno');
+      TJsonView.SendErrorInternal(res);
       WriteLn('Erro em: handlerGetCategorias - '+e.Message);
     end;
   end;
@@ -647,8 +698,11 @@ begin
   THorse.AddCallback(HorseJWT(TConfig.Token))
   .get('api/v1/account/get_categorias', handlerGetCategorias);
 
-  THorse.AddCallback(HorseJWT(TConfig.Token))
-     .Post('api/v1/account/update',   HandlerUpdateAccounPass);
+  // DESATIVADA: HandlerUpdateAccounPass usa o id da loja vindo do body, sem conferir
+  // o dono (qualquer usuário logado alteraria outra loja). O painel não usa esta rota.
+  // Se um dia precisar dela, reescreva o handler com TAutorizacao.ResolverLojaDono.
+  // THorse.AddCallback(HorseJWT(TConfig.Token))
+  //    .Post('api/v1/account/update',   HandlerUpdateAccounPass);
 
      THorse.Post('api/v1/account/register', HandleRegisterRoute);
 

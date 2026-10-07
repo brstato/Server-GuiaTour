@@ -19,6 +19,10 @@ type
     class procedure SendResponseJsonObject(Res: THorseResponse; var AJSONObject: TJSONObject; Status: integer);
     class procedure SendSuccess(Res: THorseResponse; const AMessage: string = 'Operação realizada com sucesso.');
     class procedure SendError(Res: THorseResponse; const AStatusCode: Integer; const AMessage: string);
+    // Erro inesperado: registra no log e responde 500 "Erro interno." (sem vazar detalhes).
+    // EImagemInvalida é erro do usuário: responde 400 com a própria mensagem.
+    class procedure SendErroInterno(Res: THorseResponse; const Contexto: string; E: Exception);
+    class procedure SendErrorInternal(Res: THorseResponse);
     class procedure SendHtml(Res: THorseResponse; const AStatusCode: Integer; const AHtml: string);
     class procedure SendText(Res: THorseResponse; const AStatusCode: Integer; const Str: string);
     class procedure SendT(Res: THorseResponse; const Str: string; AStatusCode: integer = 200);
@@ -74,6 +78,30 @@ begin
   finally
     ErrorObject.Free;
   end;
+end;
+
+class procedure TJsonView.SendErrorInternal(Res: THorseResponse);
+begin
+  SendError(Res, 500, 'Erro interno.');
+end;
+
+class procedure TJsonView.SendErroInterno(Res: THorseResponse; const Contexto: string; E: Exception);
+begin
+  if E = nil then
+  begin
+    SendError(Res, 500, 'Erro interno.');
+    Exit;
+  end;
+
+  // Comparado pelo nome para esta unit não depender dos models
+  if E.ClassName = 'EImagemInvalida' then
+  begin
+    SendError(Res, 400, E.Message);
+    Exit;
+  end;
+
+  WriteLn('Erro em: ' + Contexto + ' - ' + E.ClassName + ': ' + E.Message);
+  SendError(Res, 500, 'Erro interno.');
 end;
 
 class procedure TJsonView.SendHtml(Res: THorseResponse;

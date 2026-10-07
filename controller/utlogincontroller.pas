@@ -114,7 +114,7 @@ begin
 
     except
       on E: Exception do
-        TJsonView.SendError(Res, 500, e.Message);
+        TJsonView.SendErroInterno(Res, 'utlogincontroller', e);
     end;
   finally
     if Assigned(RequestJson) then RequestJson.Free;
