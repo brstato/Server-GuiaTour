@@ -149,8 +149,9 @@ begin
 
       uuidPonto := TPontoTuristicoModel.CriarPonto(dados);
 
-      TJsonView.SendResponse(Res,
-        TJSONObject(GetJSON('{"uuid":"' + uuidPonto + '"}')), 201);
+      // uuid gerado pelo servidor: texto fixo, nada a liberar
+      Res.Status(201).ContentType('application/json; charset=UTF-8')
+         .Send('{"uuid":"' + uuidPonto + '"}');
     except on e: EImagemInvalida do
       begin
         TJsonView.SendError(Res, 400, 'Imagem inválida ou muito grande.');

@@ -86,8 +86,9 @@ begin
   if Trim(Url) = '' then
     Exit;
 
-  Result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) +
-            'uploads' + PathDelim + ExtractFileName(Url);
+  // mesma pasta onde TArquivoSeguro grava (./uploads)
+  Result := IncludeTrailingPathDelimiter(ExpandFileName('./uploads')) +
+            ExtractFileName(Url);
 end;
 
 procedure DeleteImageFile(const Url: string);
@@ -124,10 +125,6 @@ begin
       foto_capa_antiga := dataset.FieldByName('FOTO_CAPA').AsString;
     FreeAndNil(dataset);
 
-    // Deletar imagem antiga se existir
-    if foto_capa_antiga <> '' then
-      DeleteImageFile(foto_capa_antiga);
-
     // Salvar nova imagem
     StringStream := TStringStream.Create(DecodedStr);
     StringStream.SaveToFile(caminho_salvar);
@@ -145,6 +142,10 @@ begin
     );
 
     Result := dataset.Fields[0].AsInteger;
+
+    // só apaga a antiga depois que a nova está salva e o banco aponta para ela
+    if foto_capa_antiga <> '' then
+      DeleteImageFile(foto_capa_antiga);
 
   finally
     if Assigned(dataset) then dataset.Free;
@@ -445,7 +446,7 @@ begin
     dataset := TGetData.getData('SELECT AVATAR FROM SITE WHERE id_loja_ex = :id_loja', [id_loja], True);
     if Assigned(dataset) and not dataset.IsEmpty then
       avatar_antigo := dataset.FieldByName('AVATAR').AsString;
-    dataset.Free;
+    FreeAndNil(dataset);
 
     // Salvar nova imagem
     StringStream := TStringStream.Create(DecodedStr);
@@ -485,7 +486,7 @@ begin
     dataset := TGetData.getData('SELECT FOTO_BIO FROM SITE WHERE id_loja_ex = :id_loja', [id_loja], True);
     if Assigned(dataset) and not dataset.IsEmpty then
       foto_bio_antiga := dataset.FieldByName('FOTO_BIO').AsString;
-    dataset.Free;
+    FreeAndNil(dataset);
 
     // Salvar nova imagem
     StringStream := TStringStream.Create(DecodedStr);
@@ -543,10 +544,24 @@ end;
 
 class procedure TProtifolioModel.UploadFoto(var id_site: integer; var nome,
   base64Str, id_loja: string);
+const
+  MAX_FOTOS_GALERIA_LOJA = 30;
 var
   caminho_salvar, url_banco, DecodedStr: string;
   StringStream: TStringStream;
+  dsTotal: TDataSet;
 begin
+  // limite de fotos por galeria (evita encher o disco do servidor)
+  dsTotal := TGetData.getData(
+    'select count(*) from site_galeria where id_site = :id_site',
+    [id_site], True);
+  try
+    if dsTotal.Fields[0].AsInteger >= MAX_FOTOS_GALERIA_LOJA then
+      raise EImagemInvalida.Create('A galeria já tem 30 fotos. Apague uma antes de enviar outra.');
+  finally
+    dsTotal.Free;
+  end;
+
   if not TArquivoSeguro.Preparar(id_loja, base64Str, caminho_salvar, url_banco, DecodedStr) then
     raise EImagemInvalida.Create('Imagem inválida: envie JPEG, PNG ou WEBP de até 8 MB.');
   StringStream := nil;
@@ -715,6 +730,7 @@ begin
       if not TArquivoSeguro.Preparar(id_loja, foto_base64, caminho_salvar, url_banco, DecodedStr) then
         raise EImagemInvalida.Create('Formato de imagem não suportado ou arquivo muito grande.');
       StringStream := TStringStream.Create(DecodedStr);
+      StringStream.SaveToFile(caminho_salvar);
     end;
 
     dataset := TGetData.getData(
@@ -743,7 +759,7 @@ begin
     dataset := TGetData.getData(
       'SELECT NOME, NOTA, TEXTO, FOTO_URL FROM DEPOIMENTOS ' +
       'WHERE ID_LOJA = :id_loja AND STATUS = ''aprovado'' ' +
-      'ORDER BY CRIADO_EM DESC;',
+      'ORDER BY CRIADO_EM DESC ROWS 50;',
       [id_loja],
       True
     );
@@ -779,11 +795,12 @@ var
   jsonitem: TJSONObject;
 begin
   Result := TJSONArray.Create;
+  dataset := nil;
   try
     dataset := TGetData.getData(
       'SELECT ID, NOME, NOTA, TEXTO, FOTO_URL, CRIADO_EM FROM DEPOIMENTOS ' +
       'WHERE ID_LOJA = :id_loja AND STATUS = ''pendente'' ' +
-      'ORDER BY CRIADO_EM DESC;',
+      'ORDER BY CRIADO_EM DESC ROWS 100;',
       [id_loja],
       True
     );

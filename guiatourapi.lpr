@@ -11,7 +11,7 @@ uses
   Classes, SysUtils,
   { you can add units after this }
   udata, uconfig, usecurityservice, uNetService, ugetdata, uguiatourutils,
-  uratelimit, uJsonView, uguiatourview, uguiatourpontoview, CustApp, urouter,
+  uratelimit, uJsonView, uguiatourpontoview, CustApp, urouter,
   uTlogincontroller, utlojacontroller, uportifoliocontroller, uloginmodel,
   ulojamodel, uportifoliomodel, uvendedormodel, Horse, utvendedorcontroller,
   utPontoscontroller, utguiatourpublicocontroller, upontoturisticomodel,

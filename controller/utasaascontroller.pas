@@ -253,8 +253,19 @@ begin
       if subId = '' then
         raise Exception.Create('Asaas não retornou o id da assinatura');
 
-      TAsaasModel.InserirAssinatura(loja.Id, customerId, subId, plano.Valor,
-        plano.Ciclo, forma, plano.Codigo);
+      try
+        TAsaasModel.InserirAssinatura(loja.Id, customerId, subId, plano.Valor,
+          plano.Ciclo, forma, plano.Codigo);
+      except
+        // não ficou registrada aqui: cancela no Asaas para não cobrar em dobro no próximo checkout
+        try
+          client.CancelSubscription(subId).Free;
+        except
+          on E2: Exception do
+            LogAsaas('checkout loja ' + uuid + ': falha ao desfazer assinatura ' + subId + ': ' + E2.Message);
+        end;
+        raise;
+      end;
 
       invoiceUrl := '';
       paymentId := '';

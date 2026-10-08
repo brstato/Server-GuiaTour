@@ -48,7 +48,7 @@ begin
     Res.Status(Status).ContentType('application/json; charset=UTF-8')
        .Send(AJSONObject.AsJSON);
   finally
-     AJSONObject.Free;
+     FreeAndNil(AJSONObject);  // zera a variável de quem chamou: evita liberar duas vezes
   end;
 end;
 

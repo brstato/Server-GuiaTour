@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, Horse, uloginmodel, uvendedormodel, uJsonView, fpjson,
-  udata, uconfig, usecurityservice, Horse.JWT, uautorizacao, uguiatourutils;
+  udata, uconfig, usecurityservice, Horse.JWT, uautorizacao, uguiatourutils,
+  ulojamodel;
 
 type
 
@@ -179,6 +180,21 @@ begin
         Exit;
       end;
 
+      // mesmo formato de apelido do resto do sistema (só a-z, 0-9 e hífen)
+      if vendorList.slug = '' then
+        vendorList.slug := vendorList.nome;
+      vendorList.slug := TLojaModel.GerarSlug(vendorList.slug);
+      if (Length(vendorList.slug) < 3) or TLojaModel.SlugReservado(vendorList.slug) then
+      begin
+        TJsonView.SendError(Res, 400, 'Apelido inválido: use pelo menos 3 letras ou números.');
+        Exit;
+      end;
+      if TLojaModel.get_slug(vendorList.slug, '') then
+      begin
+        TJsonView.SendError(Res, 409, 'Este apelido já está em uso.');
+        Exit;
+      end;
+
       if not UrlVideoValida(vendorList.url_video) then
       begin
         TJsonView.SendError(Res, 400, 'URL de vídeo inválida. Use um link de vídeo do YouTube.');
@@ -187,8 +203,9 @@ begin
 
       uuidLoja := TVendedorModel.CriarComercio(vendorList);
 
-      TJsonView.SendResponse(Res,
-        TJSONObject(GetJSON('{"uuid":"' + uuidLoja + '"}')), 201);
+      // uuid gerado pelo servidor: texto fixo, nada a liberar
+      Res.Status(201).ContentType('application/json; charset=UTF-8')
+         .Send('{"uuid":"' + uuidLoja + '"}');
     except on e: Exception do
       begin
         WriteLn('Erro em: HandlerCriarComercio - ' + e.Message);
@@ -202,7 +219,9 @@ end;
 
 class procedure TVendedorController.RegisterRoutes();
 begin
-  THorse.Post('api/v1/login_google_vendedor', HandleLoginGoogleVendedor);
+  // DESATIVADA: o painel usa login_google (que já reconhece o vendedor).
+  // Esta rota vazava memória a cada login.
+  // THorse.Post('api/v1/login_google_vendedor', HandleLoginGoogleVendedor);
 
   THorse.AddCallback(HorseJWT(TConfig.Token))
   .Get('api/v1/vendedor/comercios', HandlerListarComercios);

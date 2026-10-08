@@ -449,6 +449,12 @@ begin
 
       apelido := TLojaModel.GerarSlug(apelido);
 
+      if (Length(apelido) < 3) or TLojaModel.SlugReservado(apelido) then
+      begin
+        TJsonView.SendError(res, 400, 'Apelido inválido: use pelo menos 3 letras ou números.');
+        exit;
+      end;
+
       if TLojaModel.get_slug(apelido, id_loja) then
       begin
         TJsonView.SendResponse(res, 409);
@@ -632,7 +638,18 @@ begin
       meta_pixel_id    := jsonReq.Get('meta_pixel_id',   '');
       conta_google_ads := jsonReq.Get('conta_google_ads','');
 
-      horario_str      := jsonReq.Find('horario' ).AsJSON;
+      // horario tem que ser um objeto JSON pequeno (vai para um BLOB e é lido em toda visita)
+      if not (jsonReq.Find('horario') is TJSONObject) then
+      begin
+        TJsonView.SendError(res, 400, 'Horário inválido.');
+        Exit;
+      end;
+      horario_str      := jsonReq.Find('horario').AsJSON;
+      if Length(horario_str) > 4000 then
+      begin
+        TJsonView.SendError(res, 400, 'Horário muito grande.');
+        Exit;
+      end;
 
       TLojaModel.UpdateConfiguracoesAvancadas(id_loja, g_analytcs,
         meta_pixel_id, conta_google_ads, horario_str);
@@ -711,7 +728,9 @@ begin
      // DESATIVADA (rota pública do Inkers, sem uso)
      // THorse.Post('api/v1/public/studio', HandleStudio);
 
-     thorse.post('api/v1/public/endereco', HandleEndereco);
+     // DESATIVADA: rota pública que chamava o Gemini com a chave do servidor
+     // (sem login e sem limite: qualquer um gastava a cota). O painel não usa.
+     // thorse.post('api/v1/public/endereco', HandleEndereco);
 
      // DESATIVADAS (herdadas do Inkers, sem uso no painel). Pixel e Analytics são
      // salvos por account/update_configuracoes_avancadas.

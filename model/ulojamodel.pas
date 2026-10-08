@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, udata, ugetdata, sql_queries, uNetService,
-  ZDataset, fpjson, BCrypt, DateUtils, db;
+  ZDataset, fpjson, BCrypt, DateUtils, db, LazUTF8;
 
 type
   TLojaDados = Record
@@ -79,6 +79,7 @@ type
        class procedure UpdateConfiguracoesAvancadas(id_loja, g_analytcs,
         meta_pixel_id, conta_google_ads, horario: string);
        class function GerarSlug(const Texto: string): string;
+       class function SlugReservado(const Slug: string): Boolean;
        class function GetCategorias: TJSONArray;
 
   end;
@@ -88,26 +89,48 @@ implementation
 { TLojaModel }
 
 
+// "Café do Zé!" -> "cafe-do-ze". Só a-z, 0-9 e hífen, até 60 caracteres.
+// Mesma regra do slug dos pontos turísticos (UTF-8 correto).
 class function TLojaModel.GerarSlug(const Texto: string): string;
 const
-  ComAcento = 'áàãâäéèêëíìîïóòõôöúùûüçÁÀÃÂÄÉÈÊËÍÌÎÏÓÒÕÔÖÚÙÛÜÇ';
-  SemAcento = 'aaaaaeeeeiiiiooooouuuucAAAAAEEEEIIIIOOOOOUUUUC';
+  DE   = 'áàâãäéèêëíìîïóòôõöúùûüçñ';
+  PARA = 'aaaaaeeeeiiiiooooouuuucn';   // mesmo nº de letras que DE (24)
+  MAX_SLUG = 60;
 var
+  s, ch: string;
   i, p: Integer;
 begin
-  Result := Trim(Texto);
-  Result := StringReplace(Result, ' ', '-', [rfReplaceAll]);
-  Result := LowerCase(Result);
-
-  for i := 1 to Length(Result) do
+  s := UTF8LowerCase(Trim(Texto));
+  Result := '';
+  for i := 1 to UTF8Length(s) do
   begin
-    p := Pos(Result[i], ComAcento);
-    if p > 0 then
-      Result[i] := SemAcento[p];
+    ch := UTF8Copy(s, i, 1);
+    p := UTF8Pos(ch, DE);
+    if p > 0 then ch := PARA[p];
+    if (Length(ch) = 1) and (ch[1] in ['a'..'z', '0'..'9']) then
+      Result := Result + ch
+    else if (Result <> '') and (Result[Length(Result)] <> '-') then
+      Result := Result + '-';
   end;
+  if Length(Result) > MAX_SLUG then
+    Result := Copy(Result, 1, MAX_SLUG);
+  while (Result <> '') and (Result[Length(Result)] = '-') do
+    Delete(Result, Length(Result), 1);
+end;
 
-  if Length(Result) > 20 then
-    Result := Copy(Result, 1, 20);
+// Palavras que não podem ser apelido (a página /loja/<apelido> responderia 404)
+class function TLojaModel.SlugReservado(const Slug: string): Boolean;
+const
+  RESERVADOS: array[0..7] of string = (
+    'localhost', 'app', 'api', 'www', 'admin', 'painel', 'loja', 'imagens'
+  );
+var
+  i: Integer;
+begin
+  Result := False;
+  for i := Low(RESERVADOS) to High(RESERVADOS) do
+    if Slug = RESERVADOS[i] then
+      Exit(True);
 end;
 
 class function TLojaModel.GetCategorias: TJSONArray;
@@ -207,7 +230,8 @@ begin
        uuidString:=stringreplace(GUIDToString(uuid), '{','',[rfReplaceAll]);
        uuidString:=stringreplace(uuidString, '}','',[rfReplaceAll]);
 
-       slug := GerarSlug(ANome +' '+ uuidString);
+       // nome (até 40) + 8 primeiros caracteres do UUID: não colide com outra loja
+       slug := GerarSlug(Copy(GerarSlug(ANome), 1, 40) + ' ' + Copy(uuidString, 1, 8));
 
        getdata := TGetData.Create;
 
@@ -351,14 +375,15 @@ begin
              json.add('estado',                             LojaDados.uf);
              json.add('numero',                         LojaDados.numero);
              json.Add('g_tag',                           LojaDados.g_tag);
+             json.Add('g_analytcs',                      LojaDados.g_tag);  // nome que o painel lê e envia
              json.Add('meta_pixel',                 LojaDados.meta_pixel);
              json.Add('insta',                       LojaDados.insta_str);
              json.Add('complemento',               LojaDados.complemento);
-             json.Add('meta_long_token',       LojaDados.meta_long_token);
              json.add('meta_ads_id',                 LojaDados.MetaAdsId);
              json.add('status_campanha',        LojaDados.StatusCampanha);
              json.add('conta_google_ads_nome', LojaDados.google_ads_nome);
              json.add('conta_google_ads_id',     LojaDados.google_ads_id);
+             json.add('conta_google_ads',        LojaDados.google_ads_id);  // nome que o painel lê e envia
              json.add('id_categoria',             LojaDados.id_categoria);
              json.add('latitude',                     LojaDados.latitude);
              json.add('longitude',                   LojaDados.longitude);

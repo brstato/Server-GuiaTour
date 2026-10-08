@@ -213,30 +213,36 @@ begin
   else Result := IncMonth(ADueDate, 1);
 end;
 
+// Mensagem que vai para o painel. Só a "description" de erro de validação (HTTP 400)
+// é mostrada ao lojista; o resto (chave inválida, HTML de 502...) fica só no log.
 function AsaasErrorText(E: EAsaasError): string;
 var
   D: TJSONData;
   Arr: TJSONArray;
+  descricao: string;
 begin
-  Result := E.Message;
+  Result := 'Falha no provedor de pagamento. Tente novamente em instantes.';
+  if E.HttpStatus <> 400 then Exit;
+  D := nil;
   try
     D := GetJSON(E.Body);
-    try
-      if D is TJSONObject then
+    if D is TJSONObject then
+    begin
+      if TJSONObject(D).Find('errors') is TJSONArray then
       begin
-        if TJSONObject(D).Find('errors') is TJSONArray then
+        Arr := TJSONArray(TJSONObject(D).Find('errors'));
+        if (Arr.Count > 0) and (Arr.Items[0] is TJSONObject) then
         begin
-          Arr := TJSONArray(TJSONObject(D).Find('errors'));
-          if (Arr.Count > 0) and (Arr.Items[0] is TJSONObject) then
-            Result := JsonStr(TJSONObject(Arr.Items[0]), 'description');
+          descricao := JsonStr(TJSONObject(Arr.Items[0]), 'description');
+          if descricao <> '' then
+            Result := descricao;
         end;
       end;
-    finally
-      D.Free;
     end;
   except
-    // mantém E.Message
+    // corpo não é JSON: mantém a mensagem genérica
   end;
+  D.Free;
 end;
 
 { --------------------------------------------------------------- TAsaasClient }

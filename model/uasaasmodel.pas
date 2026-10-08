@@ -199,7 +199,8 @@ class procedure TAsaasModel.SetStatusAssinatura(const ASubId, AStatus: string);
 begin
   TGetData.getData(
     'UPDATE asaas_assinatura SET status = :st, atualizado_em = CURRENT_TIMESTAMP ' +
-    'WHERE asaas_subscription_id = :sub',
+    'WHERE asaas_subscription_id = :sub ' +
+    '  AND COALESCE(status, '''') <> ''CANCELADA''',   // cancelada é definitiva
     [AStatus, ASubId], False);
 end;
 

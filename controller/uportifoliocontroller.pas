@@ -49,6 +49,7 @@ begin
   ponto := nil;
   arr := nil;
   try
+   try
     fs := DefaultFormatSettings;
     fs.DecimalSeparator := '.';
     lat := StrToFloatDef(Trim(req.Headers['CF-IPLatitude']),  0, fs);
@@ -62,6 +63,11 @@ begin
 
     // ponto turístico mais próximo (50 km)
     arr := TPontoTuristicoModel.GetPontosPorGPS(lat, lng, 20000, 1);
+    if (not Assigned(arr)) or (arr.Count = 0) then
+    begin
+      TJsonView.SendHtml(res, 503, '<h1>GuiaTour</h1><p>Nenhum ponto turístico disponível no momento.</p>');
+      Exit;
+    end;
 
     slugPonto := TJSONObject(arr.Items[0]).Get('slug', '');
 
@@ -74,6 +80,13 @@ begin
 
     res.AddHeader('Cache-Control', 'private, no-cache');
     TJsonView.SendHtml(res, 200, TPontoView.Render(ponto, slugPonto));
+   except
+    on E: Exception do
+    begin
+      WriteLn('Erro em: ServirHome - ' + E.Message);
+      TJsonView.SendHtml(res, 500, '<h1>Erro interno.</h1>');
+    end;
+   end;
   finally
     arr.Free;
     ponto.Free;

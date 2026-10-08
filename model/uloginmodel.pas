@@ -118,7 +118,11 @@ begin
 
   GoogleUserRes := TJSONObject(GetJSON(UserInfoResponse.Content));
   try
-    g_mail := GoogleUserRes.Get('email', '');
+    // só aceita e-mail que o Google confirmou ser do dono da conta
+    if GoogleUserRes.Get('verified_email', False) then
+      g_mail := LowerCase(Trim(GoogleUserRes.Get('email', '')))
+    else
+      g_mail := '';
     g_name := GoogleUserRes.Get('name', '');
   finally
     GoogleUserRes.Free;
@@ -218,7 +222,6 @@ begin
            .Exp(DateTimeToUnix(IncHour(now, 1)))
            .AddClaim('id', uuid)
            .AddClaim('tipo', tipo)
-           .AddClaim('Exp', DateTimeToUnix(IncMonth(now, 1)))
            .Token;
 
   finally

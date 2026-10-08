@@ -127,6 +127,7 @@ var
   StringStream: TStringStream;
 begin
   arrayTrabalhos := nil;
+  jsonData := nil;
   itemTrabalho := nil;
   dataSet := nil;
   StringStream := nil;
@@ -135,6 +136,10 @@ begin
       CreateGUID(uuid);
       uuidString := StringReplace(StringReplace(GUIDToString(uuid),
                       '{', '', [rfReplaceAll]), '}', '', [rfReplaceAll]);
+
+      // galeria lida ANTES de gravar a loja: JSON inválido não deixa loja pela metade
+      if Trim(vendor.trabalhos) <> '' then
+        jsonData := GetJSON(vendor.trabalhos);
 
       if (vendor.avatar <> '') and not TArquivoSeguro.Preparar(uuidString, vendor.avatar,
            caminho_salvar_avatar, url_banco_avatar, DecodedStrAvatar) then
@@ -228,17 +233,17 @@ begin
       idSite := dataSet.Fields[0].AsInteger;
       FreeAndNil(dataSet);
 
-      jsonData := GetJSON(vendor.trabalhos);
-
-      if jsonData.JSONType = jtArray then
+      if Assigned(jsonData) and (jsonData.JSONType = jtArray) then
       begin
         arrayTrabalhos := TJSONArray(jsonData);
 
         for i := 0 to arrayTrabalhos.Count -1 do
         begin
+           if not (arrayTrabalhos.Items[i] is TJSONObject) then
+             Continue;
            itemTrabalho := arrayTrabalhos.Objects[i];
 
-           if not TArquivoSeguro.Preparar(uuidString, itemTrabalho.Strings['itemTrabalho'],
+           if not TArquivoSeguro.Preparar(uuidString, itemTrabalho.Get('itemTrabalho', ''),
                 caminho_salvar, url_banco, DecodedStr) then
              Continue;
            StringStream := TStringStream.Create(DecodedStr);
@@ -260,6 +265,7 @@ begin
     end;
   finally
       if Assigned(StringStream) then StringStream.Free;
+      if Assigned(jsonData) then jsonData.Free;   // fotos em base64: vários MB
       if Assigned(dataset) then dataset.Free;
   end;
 end;
