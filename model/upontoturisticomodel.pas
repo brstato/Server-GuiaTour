@@ -513,7 +513,7 @@ begin
     dataset := TGetData.getData(
       'SELECT p.id, p.uuid, p.nome, p.slug, p.resumo, p.historia, p.latitude, ' +
       'p.longitude, p.endereco, p.numero, p.bairro, p.cidade, p.uf, p.cep, ' +
-      'p.capa, p.ativo, p.id_categoria, c.nome AS categoria_nome, c.slug AS categoria_slug ' +
+      'p.capa, p.ativo, p.id_categoria, p.url_video, c.nome AS categoria_nome, c.slug AS categoria_slug ' +
       'FROM ponto_turistico p ' +
       'JOIN categoria_ponto_turistico c ON c.id = p.id_categoria ' +
       'WHERE p.uuid = :uuidPonto;',
@@ -544,6 +544,7 @@ begin
     Result.Add('id_categoria',    dataset.FieldByName('id_categoria'   ).AsInteger);
     Result.Add('categoria_nome',  dataset.FieldByName('categoria_nome' ).AsString);
     Result.Add('categoria_slug',  dataset.FieldByName('categoria_slug' ).AsString);
+    Result.Add('url_video',       dataset.FieldByName('url_video'      ).AsString);
     Result.Add('galeria',         MontarGaleriaJson(idPonto));
   finally
     dataset.Free;

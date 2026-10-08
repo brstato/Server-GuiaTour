@@ -143,7 +143,7 @@ begin
 
       if not UrlVideoValida(dados.url_video) then
       begin
-        TJsonView.SendError(Res, 400, 'URL de vídeo inválida. Use um link https do YouTube ou Vimeo.');
+        TJsonView.SendError(Res, 400, 'URL de vídeo inválida. Use um link de vídeo do YouTube.');
         Exit;
       end;
 
@@ -271,7 +271,7 @@ begin
 
       if not UrlVideoValida(dados.url_video) then
       begin
-        TJsonView.SendError(Res, 400, 'URL de vídeo inválida. Use um link https do YouTube ou Vimeo.');
+        TJsonView.SendError(Res, 400, 'URL de vídeo inválida. Use um link de vídeo do YouTube.');
         Exit;
       end;
 

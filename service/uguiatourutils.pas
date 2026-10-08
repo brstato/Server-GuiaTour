@@ -33,7 +33,7 @@ function HtmlEsc(const S: string): string;
 function JsonParaScript(const Json: string): string;
 
 // URL de vídeo: vazio = válido (limpa o campo). Senão, só https:// com host
-// do YouTube/Vimeo, até 1000 caracteres (tamanho da coluna URL_VIDEO), sem
+// do YouTube, até 1000 caracteres (tamanho da coluna URL_VIDEO), sem
 // espaços, aspas, < > \ ` { } nem caracteres fora do ASCII.
 function UrlVideoValida(const S: string): Boolean;
 
@@ -133,9 +133,8 @@ end;
 
 function UrlVideoValida(const S: string): Boolean;
 const
-  HOSTS_VIDEO: array[0..6] of string = (
-    'youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be',
-    'vimeo.com', 'www.vimeo.com', 'player.vimeo.com'
+  HOSTS_VIDEO: array[0..3] of string = (
+    'youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'
   );
 var
   i, fim: Integer;

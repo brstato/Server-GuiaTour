@@ -704,7 +704,9 @@ begin
   // THorse.AddCallback(HorseJWT(TConfig.Token))
   //    .Post('api/v1/account/update',   HandlerUpdateAccounPass);
 
-     THorse.Post('api/v1/account/register', HandleRegisterRoute);
+     // DESATIVADA: rota pública que criava loja sem login (abuso de cadastro e de slugs).
+     // O painel não usa. O cadastro é feito pelo vendedor ou pelo login com Google.
+     // THorse.Post('api/v1/account/register', HandleRegisterRoute);
 
      THorse.Post('api/v1/public/studio', HandleStudio);
 
