@@ -9,8 +9,6 @@ uses
   base64, uarquivoseguro, upontoturisticomodel;
 
 type
-  EImagemInvalida = class(Exception);
-
   TComercioPerfil = record
     Encontrado  : Boolean;
     SiteID      : Integer;
