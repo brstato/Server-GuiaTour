@@ -708,27 +708,30 @@ begin
      // O painel não usa. O cadastro é feito pelo vendedor ou pelo login com Google.
      // THorse.Post('api/v1/account/register', HandleRegisterRoute);
 
-     THorse.Post('api/v1/public/studio', HandleStudio);
+     // DESATIVADA (rota pública do Inkers, sem uso)
+     // THorse.Post('api/v1/public/studio', HandleStudio);
 
      thorse.post('api/v1/public/endereco', HandleEndereco);
 
-     THorse.AddCallback(HorseJWT(TConfig.Token))
-     .Post('api/v1/account/sincronizar-cache/:instance', HandleSincronizarCache);
+     // DESATIVADAS (herdadas do Inkers, sem uso no painel). Pixel e Analytics são
+     // salvos por account/update_configuracoes_avancadas.
+     // THorse.AddCallback(HorseJWT(TConfig.Token))
+     // .Post('api/v1/account/sincronizar-cache/:instance', HandleSincronizarCache);
 
-     THorse.AddCallback(HorseJWT(TConfig.Token))
-     .Post('api/v1/account/metatoken',   HandlerUpdateMetaLongToken);
+     // THorse.AddCallback(HorseJWT(TConfig.Token))
+     // .Post('api/v1/account/metatoken',   HandlerUpdateMetaLongToken);
 
-     THorse.AddCallback(HorseJWT(TConfig.Token))
-     .Post('api/v1/account/meta_ads_id',   HandlerUpdateMetaAdsId);
+     // THorse.AddCallback(HorseJWT(TConfig.Token))
+     // .Post('api/v1/account/meta_ads_id',   HandlerUpdateMetaAdsId);
 
-     THorse.AddCallback(HorseJWT(TConfig.Token))
-     .Post('api/v1/account/meta_pixel_id',   HandlerUpdateMetaPixelId);
+     // THorse.AddCallback(HorseJWT(TConfig.Token))
+     // .Post('api/v1/account/meta_pixel_id',   HandlerUpdateMetaPixelId);
 
-     THorse.AddCallback(HorseJWT(TConfig.Token))
-     .Post('api/v1/account/google_analytics_id',   HandlerUpdateGoogleAnalyticsId);
+     // THorse.AddCallback(HorseJWT(TConfig.Token))
+     // .Post('api/v1/account/google_analytics_id',   HandlerUpdateGoogleAnalyticsId);
 
-     THorse.AddCallback(HorseJWT(TConfig.Token))
-     .Post('api/v1/account/status_campanha_meta',   HandlerUpdateStatusCampanhaMeta);
+     // THorse.AddCallback(HorseJWT(TConfig.Token))
+     // .Post('api/v1/account/status_campanha_meta',   HandlerUpdateStatusCampanhaMeta);
 end;
 
 

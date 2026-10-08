@@ -12,13 +12,11 @@ object DataModule1: TDataModule1
       'RawStringEncoding=DB_CP'
     )
     AutoCommit = False
-    Connected = True
+    Connected = False
     DisableSavepoints = False
     HostName = '100.72.176.93'
     Port = 3050
     Database = 'guiatour'
-    User = 'sysdba'
-    Password = 'masterkey'
     Protocol = 'pooled.firebird'
     LibraryLocation = '/usr/lib/x86_64-linux-gnu/libfbclient.so'
     Left = 110

@@ -22,7 +22,8 @@ uses
   uguiatourpontoview,
   uautorizacao,
   uadminmodel,
-  uguiatourutils;
+  uguiatourutils,
+  uratelimit;
 
 type
 
@@ -607,7 +608,7 @@ procedure HandleDepoimentoCreate(req: THorseRequest; res: THorseResponse;
   next: TNextProc);
 var
   jsonreq, jsonres: TJSONObject;
-  slug, nome, texto, foto_base64, extensao_foto, id_loja, err: string;
+  slug, nome, texto, foto_base64, extensao_foto, id_loja, err, ip: string;
   nota, id_depoimento: integer;
   lJSONData: TJSONData;
 begin
@@ -640,6 +641,27 @@ begin
       if (nota < 1) or (nota > 5) then
       begin
         TJsonView.SendError(res, 400, 'Nota inválida.');
+        Exit;
+      end;
+
+      // tamanhos das colunas (NOME 120, TEXTO 1000): corta em vez de dar erro no banco
+      nome  := Utf8Corta(nome, 120);
+      texto := Utf8Corta(texto, 1000);
+
+      // a loja precisa existir, estar no ar e bater com o slug da página
+      if not TProtifolioModel.LojaAceitaDepoimento(id_loja, slug) then
+      begin
+        TJsonView.SendError(res, 404, 'Loja não encontrada.');
+        Exit;
+      end;
+
+      // 1 depoimento por IP + loja a cada 60 s (spam e enchimento do disco)
+      ip := req.Headers['CF-Connecting-IP'];
+      if ip = '' then ip := req.Headers['X-Forwarded-For'];
+      if ip = '' then ip := 'desconhecido';
+      if not TDedupe.Permitir('depoimento:' + ip + '|' + id_loja, 60000) then
+      begin
+        TJsonView.SendError(res, 429, 'Aguarde um minuto antes de enviar outro depoimento.');
         Exit;
       end;
 
@@ -707,6 +729,7 @@ var
   jsonreq: TJSONObject;
   id_depoimento: integer;
   lJSONData: TJSONData;
+  id_loja: string;
 begin
   jsonreq := nil;
   try
@@ -721,6 +744,8 @@ begin
         Exit;
       end;
 
+      if not TAutorizacao.ResolverLojaDono(req, res, jsonreq, id_loja) then Exit;
+
       id_depoimento := jsonreq.Get('id_depoimento', 0);
 
       if id_depoimento <= 0 then
@@ -729,7 +754,11 @@ begin
         Exit;
       end;
 
-      TProtifolioModel.AprovarDepoimento(id_depoimento);
+      if not TProtifolioModel.AprovarDepoimento(id_depoimento, id_loja) then
+      begin
+        TJsonView.SendError(res, 404, 'Depoimento não encontrado.');
+        Exit;
+      end;
 
       TJsonView.SendSuccess(res);
     except
@@ -746,8 +775,9 @@ begin
   THorse.AddCallback(HorseJWT(TConfig.Token))
   .Post('api/v1/portfolio/update_portifolio_basico', HandlePortifolioUpdateBasico);
 
-  THorse.AddCallback(HorseJWT(TConfig.Token))
-  .Post('api/v1/portfolio/update', HandlePortifolioUpdate);
+  // DESATIVADA (sem uso no painel; gravava avatar/foto_bio como texto livre)
+  // THorse.AddCallback(HorseJWT(TConfig.Token))
+  // .Post('api/v1/portfolio/update', HandlePortifolioUpdate);
 
   THorse.AddCallback(HorseJWT(TConfig.Token))
   .Get('api/v1/portfolio/info', HandlerPortifolioGetInfo);
@@ -755,8 +785,9 @@ begin
   THorse.AddCallback(HorseJWT(TConfig.Token))
   .Post('api/v1/portfolio/remove', HandleRemoveItem);
 
-  THorse.AddCallback(HorseJWT(TConfig.Token))
-  .Get('api/v1/portfolio/galeria/:id_portfolio', HandleGetGaleria);
+  // DESATIVADA (sem uso no painel; não conferia o dono da galeria)
+  // THorse.AddCallback(HorseJWT(TConfig.Token))
+  // .Get('api/v1/portfolio/galeria/:id_portfolio', HandleGetGaleria);
 
   THorse.AddCallback(HorseJWT(TConfig.Token))
   .Post('api/v1/portfolio/avatar', HandleUpdateAvatar);

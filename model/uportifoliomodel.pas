@@ -69,11 +69,12 @@ type
     class procedure AtualizarUrlVideo(const id_loja, url_video: string);
     class function GetDepoimentosAprovadosJson(const id_loja: string): string;
     class function GetDepoimentosPendentesJson(const id_loja: string): TJSONArray;
-    class procedure AprovarDepoimento(id: integer);
+    class function AprovarDepoimento(id: integer; const id_loja: string): Boolean;
     class function SaveDepoimento(const id_loja, nome,
   texto: string; nota: integer; const foto_base64, extensao_foto: string): integer;
     class function FotoValidaDepoimento(const foto_base64: string;
       out Extensao: string): Boolean;
+    class function LojaAceitaDepoimento(const id_loja, slug: string): Boolean;
     class function GetIdLojaPorSlug(const Slug: string): string;
   end;
 
@@ -636,6 +637,24 @@ begin
   end;
 end;
  
+// O depoimento só é aceito para uma loja que existe, está no ar (validade em dia)
+// e cujo slug bate com o da página de onde o formulário foi enviado.
+class function TProtifolioModel.LojaAceitaDepoimento(const id_loja, slug: string): Boolean;
+var
+  ds: TDataSet;
+begin
+  Result := False;
+  if (id_loja = '') or (slug = '') then Exit;
+  ds := TGetData.getData(
+    'SELECT 1 FROM loja WHERE uuid = :id_loja AND slug = :slug AND validade >= CURRENT_DATE',
+    [id_loja, slug], True);
+  try
+    Result := Assigned(ds) and not ds.IsEmpty;
+  finally
+    ds.Free;
+  end;
+end;
+
 class function TProtifolioModel.FotoValidaDepoimento(const foto_base64: string;
   out Extensao: string): Boolean;
 var
@@ -645,6 +664,8 @@ const
 begin
   Result := False;
   Extensao := '';
+  // base64 ocupa ~4/3 do tamanho real: recusa o que já é grande demais ANTES de decodificar
+  if Length(foto_base64) > ((TAMANHO_MAXIMO div 3) + 1) * 4 then Exit;
  
   DecodedStr := DecodeStringBase64(foto_base64);
  
@@ -689,13 +710,11 @@ begin
   try
     if foto_base64 <> '' then
     begin
-      nome_arquivo   := 'dep_' + FormatDateTime('yyyymmddhhnnsszzz', Now) + extensao_foto;
-      caminho_salvar := ExpandFileName('./uploads/' + id_loja + '_' + nome_arquivo);
-      url_banco      := '/imagens/'  + id_loja + '_' + nome_arquivo;
- 
-      DecodedStr := DecodeStringBase64(foto_base64);
+      // nome e caminho gerados no servidor: o id_loja vem do cliente e nunca entra cru no caminho
+      // (TArquivoSeguro só aceita prefixo no formato de UUID e grava dentro de ./uploads)
+      if not TArquivoSeguro.Preparar(id_loja, foto_base64, caminho_salvar, url_banco, DecodedStr) then
+        raise EImagemInvalida.Create('Formato de imagem não suportado ou arquivo muito grande.');
       StringStream := TStringStream.Create(DecodedStr);
-      StringStream.SaveToFile(caminho_salvar);
     end;
 
     dataset := TGetData.getData(
@@ -790,16 +809,26 @@ begin
   end;
 end;
 
-class procedure TProtifolioModel.AprovarDepoimento(id: integer);
+// Só aprova depoimento da própria loja. Devolve False se o id não for dessa loja.
+class function TProtifolioModel.AprovarDepoimento(id: integer; const id_loja: string): Boolean;
+var
+  ds: TDataSet;
 begin
+  Result := False;
+  ds := TGetData.getData(
+    'SELECT 1 FROM DEPOIMENTOS WHERE ID = :id AND ID_LOJA = :id_loja',
+    [id, id_loja], True);
   try
-    TGetData.getData(
-      'UPDATE DEPOIMENTOS SET STATUS = ''aprovado'' WHERE ID = :id',
-      [id]
-    );
-  except
-      raise;
+    if (not Assigned(ds)) or ds.IsEmpty then Exit;
+  finally
+    ds.Free;
   end;
+
+  TGetData.getData(
+    'UPDATE DEPOIMENTOS SET STATUS = ''aprovado'' WHERE ID = :id AND ID_LOJA = :id_loja',
+    [id, id_loja]
+  );
+  Result := True;
 end;
 
 end.

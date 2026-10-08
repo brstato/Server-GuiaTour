@@ -92,13 +92,14 @@ procedure TDataModule1.DataModuleCreate(Sender: TObject);
 var
   database:string;
 begin
-  //database:='base_dev';
-  database:='base';
+  // conexão vem do resources/config.ini (fora do git), seção [database]
+  database := TConfig.ConfigValue('database', 'name', 'base');
 
   try
-    ZConnection1.Database:=database;
-    //ZConnection1.HostName:='127.0.0.1';
-    ZConnection1.HostName:='100.72.176.93';
+    ZConnection1.Database := database;
+    ZConnection1.HostName := TConfig.ConfigValue('database', 'host', '127.0.0.1');
+    ZConnection1.User     := TConfig.ConfigValue('database', 'user', 'SYSDBA');
+    ZConnection1.Password := TConfig.ConfigValue('database', 'password', '');
     ZConnection1.Properties.Add('ConnectionTimeout=60');
     ZConnection1.Properties.Add('MaxConnections=20');
     ZConnection1.Properties.Add('RawStringEncoding=DB_CP');

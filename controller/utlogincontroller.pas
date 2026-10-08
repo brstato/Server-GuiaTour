@@ -30,54 +30,49 @@ implementation
 procedure HandleRefreshToken(Req: THorseRequest; Res: THorseResponse; next: TNextProc);
 var
   TokenData, RequestJson: TJSONObject;
+  lJSONData: TJSONData;
   uuid, refreshToken: string;
-  StringError: TStringList;
   status: integer;
 begin
-  status:=401;
   RequestJson := nil;
   TokenData := nil;
-
   try
     try
-      try
-        if Trim(req.Body) = '' then
-        begin
-          TJsonView.SendResponse(Res, TJSONObject(GetJSON('{"message":"Corpo da requisição está vazio."}')), 400);
-          Exit;
-        end;
-        RequestJson := TJSONObject(GetJSON(req.Body));
-      except on e:EScannerError do
+      if Trim(req.Body) = '' then
       begin
-        TJsonView.SendResponse(Res, TJSONObject(GetJSON('{"message":"JSON malformado."}')), 400);
-      end;
+        TJsonView.SendError(Res, 400, 'Corpo da requisição está vazio.');
+        Exit;
       end;
 
-      refreshToken := RequestJson.get('r_token', '');
-      uuid         := RequestJson.get('uuid', ''   );
+      lJSONData := GetJSON(req.Body);
+      if lJSONData.JSONType <> jtObject then
+      begin
+        lJSONData.Free;
+        TJsonView.SendError(Res, 400, 'JSON inválido.');
+        Exit;
+      end;
+      RequestJson := TJSONObject(lJSONData);
+
+      refreshToken := RequestJson.Get('r_token', '');
+      uuid         := RequestJson.Get('uuid', '');
 
       if (refreshToken = '') or (uuid = '') then
-         exit;
+      begin
+        TJsonView.SendError(Res, 401, 'Sessão inválida.');
+        Exit;
+      end;
 
       TokenData := TJSONObject(GetJSON(TLoginModel.updateRefreshToken(refreshToken, uuid)));
-
-      status:=TokenData.Find('status').AsInteger;
+      status := StrToIntDef(TokenData.Get('status', '401'), 401);
 
       TJsonView.SendResponse(Res, TokenData, status);
-
-    except on e:Exception do
-      begin
-        StringError:= TStringList.Create;
-        try
-          StringError.Add(e.Message);
-        finally
-          StringError.Free;
-        end;
-      end;
+    except
+      on e: Exception do
+        TJsonView.SendErroInterno(Res, 'HandleRefreshToken', e);
     end;
   finally
     if Assigned(RequestJson) then RequestJson.Free;
-    if Assigned(TokenData  ) then TokenData.Free;
+    if Assigned(TokenData) then TokenData.Free;
   end;
 end;
 
@@ -87,10 +82,20 @@ var
   RequestJson, LoginData: TJSONObject;
   Email, GoogleToken, nome, ads_id, r_token, response, GoogleCode: string;
   status: integer;
+  lJSONData: TJSONData;
 begin
+  RequestJson := nil;
+  LoginData := nil;
   try
     try
-      RequestJson := TJSONObject(GetJSON(Req.Body));
+      lJSONData := GetJSON(Req.Body);
+      if lJSONData.JSONType <> jtObject then
+      begin
+        lJSONData.Free;
+        TJsonView.SendError(Res, 400, 'JSON inválido.');
+        Exit;
+      end;
+      RequestJson := TJSONObject(lJSONData);
 
       //nome        := RequestJson.Find('g_name' ).AsString;
       //Email       := RequestJson.Find('g_email').AsString;
@@ -118,7 +123,7 @@ begin
     end;
   finally
     if Assigned(RequestJson) then RequestJson.Free;
-    //if Assigned(LoginData) then LoginData.Free;
+    if Assigned(LoginData) then LoginData.Free;   // SendResponse não libera o objeto
   end;
 
 end;

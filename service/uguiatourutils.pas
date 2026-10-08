@@ -26,8 +26,20 @@ function EhBot(const UserAgent: string): Boolean;
 procedure CalcularCaixa(Lat, Lng, RaioKm: Double;
   out LatMin, LatMax, LngMin, LngMax: Double);
 
-// Escapa texto para HTML (texto e atributos).
+// Escapa texto para HTML (texto e atributos). Também escapa { e } (motor {{VAR}}).
 function HtmlEsc(const S: string): string;
+
+// Escapa texto para dentro de uma string JavaScript/JSON ('...' ou "...") num <script>.
+function JsEsc(const S: string): string;
+
+// Só os dígitos de S (telefone para href do WhatsApp e JSON-LD).
+function SoDigitos(const S: string): string;
+
+// ID do Meta Pixel: só dígitos (5 a 20). Formato inválido -> ''.
+function MetaPixelSeguro(const S: string): string;
+
+// ID do Google (G-, GT-, AW-, UA- + letras/dígitos/hífen). Formato inválido -> ''.
+function GoogleTagSeguro(const S: string): string;
 
 // JSON para dentro de <script type="application/json|ld+json">: troca "<" por \u003c.
 function JsonParaScript(const Json: string): string;
@@ -124,6 +136,74 @@ begin
   Result := StringReplace(Result, '>',  '&gt;',   [rfReplaceAll]);
   Result := StringReplace(Result, '"',  '&quot;', [rfReplaceAll]);
   Result := StringReplace(Result, '''', '&#39;',  [rfReplaceAll]);
+  // chaves também: o motor de template usa {{VAR}} e apaga o que estiver entre {{ e }}
+  Result := StringReplace(Result, '{',  '&#123;', [rfReplaceAll]);
+  Result := StringReplace(Result, '}',  '&#125;', [rfReplaceAll]);
+end;
+
+function JsEsc(const S: string): string;
+var
+  i: Integer;
+  c: Char;
+begin
+  // #92 = barra invertida (escrita assim de propósito: não troque por outra forma)
+  Result := '';
+  for i := 1 to Length(S) do
+  begin
+    c := S[i];
+    case c of
+      #92:  Result := Result + #92#92;
+      '"':  Result := Result + #92'"';
+      '''': Result := Result + #92'u0027';
+      '<':  Result := Result + #92'u003c';
+      '>':  Result := Result + #92'u003e';
+      '&':  Result := Result + #92'u0026';
+      '{':  Result := Result + #92'u007b';
+      '}':  Result := Result + #92'u007d';
+      #10:  Result := Result + #92'n';
+      #13:  Result := Result + #92'r';
+      #9:   Result := Result + #92't';
+    else
+      if Ord(c) >= 32 then Result := Result + c;
+    end;
+  end;
+end;
+
+function SoDigitos(const S: string): string;
+var
+  i: Integer;
+begin
+  Result := '';
+  for i := 1 to Length(S) do
+    if S[i] in ['0'..'9'] then Result := Result + S[i];
+end;
+
+function MetaPixelSeguro(const S: string): string;
+var
+  i: Integer;
+  t: string;
+begin
+  Result := '';
+  t := Trim(S);
+  if (Length(t) < 5) or (Length(t) > 20) then Exit;
+  for i := 1 to Length(t) do
+    if not (t[i] in ['0'..'9']) then Exit;
+  Result := t;
+end;
+
+function GoogleTagSeguro(const S: string): string;
+var
+  i: Integer;
+  t: string;
+begin
+  Result := '';
+  t := UpperCase(Trim(S));
+  if (Length(t) < 4) or (Length(t) > 30) then Exit;
+  if not ((Copy(t, 1, 2) = 'G-') or (Copy(t, 1, 3) = 'GT-') or
+          (Copy(t, 1, 3) = 'AW-') or (Copy(t, 1, 3) = 'UA-')) then Exit;
+  for i := 1 to Length(t) do
+    if not (t[i] in ['A'..'Z', '0'..'9', '-']) then Exit;
+  Result := t;
 end;
 
 function JsonParaScript(const Json: string): string;
