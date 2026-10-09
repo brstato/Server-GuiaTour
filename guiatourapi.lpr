@@ -8,7 +8,7 @@ uses
   cthreads,
   cwstring,
   {$ENDIF}
-  Classes, SysUtils,
+  Classes, SysUtils, zcomponent,
   { you can add units after this }
   udata, uconfig, usecurityservice, uNetService, ugetdata, uguiatourutils,
   uratelimit, uJsonView, uguiatourpontoview, CustApp, urouter,

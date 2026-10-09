@@ -21,7 +21,7 @@ type
 implementation
 
 const
-  TIPOS_EVENTO: array[0..4] of string = ('card', 'pin', 'ver', 'whats', 'rota');
+  TIPOS_EVENTO: array[0..5] of string = ('card', 'pin', 'ver', 'whats', 'rota', 'visita');
 
 // GET /api/v1/explorar/buscar?q=
 procedure HandlerBuscar(Req: THorseRequest; Res: THorseResponse; Next: TNextProc);

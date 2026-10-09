@@ -5,7 +5,7 @@ unit ueventomodel;
 interface
 
 uses
-  Classes, SysUtils, ugetdata;
+  Classes, SysUtils, DateUtils, db, fpjson, ugetdata;
 
 type
 
@@ -16,9 +16,17 @@ type
     // Grava 1 clique. Se a loja não existir ou estiver vencida, não grava nada
     // (sem erro). pontoSlug pode ser ''. Exceções de banco sobem para o chamador.
     class procedure Registrar(const lojaSlug, pontoSlug, tipo: string);
+
+    // Métricas do painel da loja nos últimos "dias" dias (contando hoje).
+    // Devolve nil se a loja não existir. Quem chama libera o objeto.
+    class function Metricas(const uuidLoja: string; dias: Integer): TJSONObject;
   end;
 
 implementation
+
+const
+  // tipos mostrados no painel (os mesmos aceitos em POST api/v1/evento)
+  TIPOS_METRICA: array[0..5] of string = ('visita', 'whats', 'rota', 'ver', 'card', 'pin');
 
 { TEventoModel }
 
@@ -34,6 +42,130 @@ begin
     'WHERE l.slug = :loja AND l.validade >= CURRENT_DATE;',
     [pontoSlug, tipo, lojaSlug]
   );
+end;
+
+class function TEventoModel.Metricas(const uuidLoja: string; dias: Integer): TJSONObject;
+var
+  ds: TDataSet;
+  idLoja, i: Integer;
+  inicio, inicioAnterior: TDateTime;
+  atual, anterior, item: TJSONObject;
+  porDia, pontos: TJSONArray;
+  tipo: string;
+begin
+  Result := nil;
+  if (dias < 1) or (dias > 366) then
+    dias := 30;
+
+  // período = os últimos "dias" dias, contando hoje; o anterior tem o mesmo tamanho
+  inicio := IncDay(Date, -(dias - 1));
+  inicioAnterior := IncDay(inicio, -dias);
+
+  // id interno da loja (o índice de evento_clique é por id_loja + criado_em)
+  idLoja := 0;
+  ds := TGetData.getData('SELECT id FROM loja WHERE uuid = :uuid', [uuidLoja], True);
+  try
+    if Assigned(ds) and not ds.IsEmpty then
+      idLoja := ds.Fields[0].AsInteger;
+  finally
+    ds.Free;
+  end;
+  if idLoja = 0 then
+    Exit;
+
+  Result := TJSONObject.Create;
+  try
+    Result.Add('dias', dias);
+    atual := TJSONObject.Create;
+    Result.Add('atual', atual);
+    anterior := TJSONObject.Create;
+    Result.Add('anterior', anterior);
+    porDia := TJSONArray.Create;
+    Result.Add('por_dia', porDia);
+    pontos := TJSONArray.Create;
+    Result.Add('pontos', pontos);
+
+    for i := Low(TIPOS_METRICA) to High(TIPOS_METRICA) do
+    begin
+      atual.Add(TIPOS_METRICA[i], 0);
+      anterior.Add(TIPOS_METRICA[i], 0);
+    end;
+
+    // 1) total por tipo: período atual e anterior numa consulta só
+    //    (parâmetros na ordem do texto: :ini1, :ini2, :id, :ini_ant)
+    ds := TGetData.getData(
+      'SELECT tipo, ' +
+      '  CAST(SUM(CASE WHEN criado_em >= :ini1 THEN 1 ELSE 0 END) AS INTEGER) AS atual, ' +
+      '  CAST(SUM(CASE WHEN criado_em <  :ini2 THEN 1 ELSE 0 END) AS INTEGER) AS anterior ' +
+      'FROM evento_clique ' +
+      'WHERE id_loja = :id AND criado_em >= :ini_ant ' +
+      'GROUP BY tipo',
+      [inicio, inicio, idLoja, inicioAnterior], True);
+    try
+      if Assigned(ds) then
+        while not ds.EOF do
+        begin
+          tipo := ds.FieldByName('tipo').AsString;
+          if atual.IndexOfName(tipo) >= 0 then
+          begin
+            atual.Integers[tipo] := ds.FieldByName('atual').AsInteger;
+            anterior.Integers[tipo] := ds.FieldByName('anterior').AsInteger;
+          end;
+          ds.Next;
+        end;
+    finally
+      ds.Free;
+    end;
+
+    // 2) total por dia no período atual (só dias com movimento; o painel completa os zeros)
+    ds := TGetData.getData(
+      'SELECT CAST(criado_em AS DATE) AS dia, CAST(COUNT(*) AS INTEGER) AS total ' +
+      'FROM evento_clique ' +
+      'WHERE id_loja = :id AND criado_em >= :ini ' +
+      'GROUP BY CAST(criado_em AS DATE) ' +
+      'ORDER BY 1',
+      [idLoja, inicio], True);
+    try
+      if Assigned(ds) then
+        while not ds.EOF do
+        begin
+          item := TJSONObject.Create;
+          item.Add('dia', FormatDateTime('yyyy-mm-dd', ds.FieldByName('dia').AsDateTime));
+          item.Add('total', ds.FieldByName('total').AsInteger);
+          porDia.Add(item);
+          ds.Next;
+        end;
+    finally
+      ds.Free;
+    end;
+
+    // 3) pontos turísticos que mais trouxeram cliques para a loja
+    ds := TGetData.getData(
+      'SELECT FIRST 5 p.nome, p.slug, CAST(COUNT(*) AS INTEGER) AS total ' +
+      'FROM evento_clique e ' +
+      'JOIN ponto_turistico p ON p.id = e.id_ponto ' +
+      'WHERE e.id_loja = :id AND e.criado_em >= :ini ' +
+      'GROUP BY p.nome, p.slug ' +
+      'ORDER BY 3 DESC',
+      [idLoja, inicio], True);
+    try
+      if Assigned(ds) then
+        while not ds.EOF do
+        begin
+          item := TJSONObject.Create;
+          item.Add('nome', ds.FieldByName('nome').AsString);
+          item.Add('slug', ds.FieldByName('slug').AsString);
+          item.Add('total', ds.FieldByName('total').AsInteger);
+          pontos.Add(item);
+          ds.Next;
+        end;
+    finally
+      ds.Free;
+    end;
+  except
+    FreeAndNil(Result);
+    raise;
+  end;
 end;
 
 end.

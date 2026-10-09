@@ -1363,6 +1363,36 @@
         })();
     </script>
 
+    <script>
+        /* Métricas do painel: registra a visita e os cliques de contato.
+           sendBeacon não atrasa a navegação; qualquer falha é ignorada. */
+        (function () {
+            var campo = document.getElementById('dep-slug');
+            var loja = campo ? campo.value : '';
+            if (!/^[A-Za-z0-9-]{1,100}$/.test(loja)) return;
+
+            function registrar(tipo) {
+                try {
+                    var corpo = JSON.stringify({ tipo: tipo, loja: loja });
+                    if (navigator.sendBeacon) {
+                        navigator.sendBeacon('/api/v1/evento', new Blob([corpo], { type: 'application/json' }));
+                    } else {
+                        fetch('/api/v1/evento', { method: 'POST', body: corpo, keepalive: true, headers: { 'Content-Type': 'application/json' } });
+                    }
+                } catch (e) { }
+            }
+
+            registrar('visita');
+
+            document.addEventListener('click', function (e) {
+                var link = e.target.closest ? e.target.closest('a[href]') : null;
+                if (!link) return;
+                if (link.href.indexOf('https://wa.me/') === 0) registrar('whats');
+                else if (link.href.indexOf('https://www.google.com/maps/') === 0) registrar('rota');
+            });
+        })();
+    </script>
+
     <!-- PhotoSwipe 5 JS -->
     <script type="module">
         import PhotoSwipeLightbox from 'https://unpkg.com/photoswipe@5.4.3/dist/photoswipe-lightbox.esm.js';

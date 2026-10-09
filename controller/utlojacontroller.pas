@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Horse, ulojamodel, uJsonView, fpjson,
   sql_queries, udata, ucacheservice, Horse.JWT, usecurityservice, uconfig,
-  uautorizacao;
+  uautorizacao, ueventomodel;
 
 type
 
@@ -689,8 +689,46 @@ begin
   end;
 end;
 
+// GET api/v1/account/metricas?id_loja=<uuid>&dias=7|30|90
+// Lojista: a própria loja. Vendedor: as lojas dele. Administrador: qualquer loja (só leitura).
+procedure HandlerMetricas(req: THorseRequest; res: THorseResponse; next: TNextProc);
+var
+  id_loja: string;
+  comoAdmin: Boolean;
+  dias: Integer;
+  jsonRes: TJSONObject;
+begin
+  jsonRes := nil;
+  try
+    if not TAutorizacao.ResolverLoja(req, res, nil, True, id_loja, comoAdmin) then Exit;
+
+    dias := StrToIntDef(req.Query['dias'], 30);
+    if (dias <> 7) and (dias <> 30) and (dias <> 90) then
+      dias := 30;
+
+    jsonRes := TEventoModel.Metricas(id_loja, dias);
+    if not Assigned(jsonRes) then
+    begin
+      TJsonView.SendError(res, 404, 'Loja não encontrada.');
+      Exit;
+    end;
+
+    res.AddHeader('Cache-Control', 'private, max-age=60');
+    TJsonView.SendResponseJsonObject(res, jsonRes, 200);  // libera jsonRes
+  except
+    on e: Exception do
+    begin
+      FreeAndNil(jsonRes);
+      TJsonView.SendErroInterno(res, 'HandlerMetricas', e);
+    end;
+  end;
+end;
+
 class procedure TlojaController.RegisterRoutes;
 begin
+  THorse.AddCallback(HorseJWT(TConfig.Token))
+  .Get('api/v1/account/metricas', HandlerMetricas);
+
   THorse.AddCallback(HorseJWT(TConfig.Token))
   .Get('api/v1/portfolio/account/:cep', HandlerGetEnderecoCep);
 

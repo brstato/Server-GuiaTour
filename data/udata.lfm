@@ -12,14 +12,13 @@ object DataModule1: TDataModule1
       'RawStringEncoding=DB_CP'
     )
     AutoCommit = False
-    Connected = False
     DisableSavepoints = False
     HostName = '100.72.176.93'
     Port = 3050
     Database = 'guiatour'
     Protocol = 'pooled.firebird'
     LibraryLocation = '/usr/lib/x86_64-linux-gnu/libfbclient.so'
-    Left = 110
+    Left = 112
     Top = 96
   end
   object ZConnectionGroup1: TZConnectionGroup
