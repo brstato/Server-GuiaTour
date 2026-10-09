@@ -29,7 +29,7 @@ interface
 
 uses
   Classes, SysUtils, Horse, Horse.JWT, fpjson, udata, uconfig, uJsonView,
-  uadminmodel;
+  uadminmodel, uautorizacao, ueventomodel;
 
 type
 
@@ -183,8 +183,73 @@ begin
   end;
 end;
 
+// ?dias=: só 7, 30 ou 90. Qualquer outro valor vira 30.
+function DiasMetricas(Req: THorseRequest): Integer;
+begin
+  Result := StrToIntDef(Trim(Req.Query['dias']), 30);
+  if (Result <> 7) and (Result <> 30) and (Result <> 90) then
+    Result := 30;
+end;
+
+// GET api/v1/vendedor/metricas?dias=7|30|90
+// Soma as lojas do vendedor do token. O vendedor nunca escolhe o escopo.
+procedure HandlerMetricasVendedor(Req: THorseRequest; Res: THorseResponse; next: TNextProc);
+var
+  idVendedor: string;
+  jsonRes: TJSONObject;
+begin
+  jsonRes := nil;
+  try
+    if not TAutorizacao.ExigirVendedorAtivo(Req, Res, idVendedor) then Exit;
+
+    jsonRes := TEventoModel.MetricasRede(idVendedor, DiasMetricas(Req));
+    if not Assigned(jsonRes) then
+    begin
+      TJsonView.SendError(Res, 404, 'Vendedor não encontrado.');
+      Exit;
+    end;
+
+    Res.AddHeader('Cache-Control', 'private, max-age=60');
+    TJsonView.SendResponseJsonObject(Res, jsonRes, 200);  // libera jsonRes
+  except on e: Exception do
+    begin
+      if Assigned(jsonRes) then FreeAndNil(jsonRes);
+      TJsonView.SendErroInterno(Res, 'HandlerMetricasVendedor', e);
+    end;
+  end;
+end;
+
+// GET api/v1/admin/metricas?dias=7|30|90
+// Soma a rede inteira. Só vendedor administrador (ativo e ADM no banco agora).
+procedure HandlerAdminMetricas(Req: THorseRequest; Res: THorseResponse; next: TNextProc);
+var
+  idVendedor: string;
+  jsonRes: TJSONObject;
+begin
+  jsonRes := nil;
+  try
+    if not ExigirVendedorAdmin(Req, Res, idVendedor) then Exit;
+
+    jsonRes := TEventoModel.MetricasRede('', DiasMetricas(Req));
+
+    Res.AddHeader('Cache-Control', 'private, max-age=60');
+    TJsonView.SendResponseJsonObject(Res, jsonRes, 200);  // libera jsonRes
+  except on e: Exception do
+    begin
+      if Assigned(jsonRes) then FreeAndNil(jsonRes);
+      TJsonView.SendErroInterno(Res, 'HandlerAdminMetricas', e);
+    end;
+  end;
+end;
+
 class procedure TAdminController.RegisterRoutes();
 begin
+  THorse.AddCallback(HorseJWT(TConfig.Token))
+  .Get('api/v1/vendedor/metricas', HandlerMetricasVendedor);
+
+  THorse.AddCallback(HorseJWT(TConfig.Token))
+  .Get('api/v1/admin/metricas', HandlerAdminMetricas);
+
   THorse.AddCallback(HorseJWT(TConfig.Token))
   .Get('api/v1/vendedor/perfil', HandlerPerfilVendedor);
 
